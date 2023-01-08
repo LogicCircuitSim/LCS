@@ -175,7 +175,7 @@ public abstract class Window extends KeyList {
 		ImGui.createContext();
 		
 		final ImGuiIO io = ImGui.getIO();
-		// io.setIniFilename(null);
+		 io.setIniFilename(null);
 		io.addConfigFlags(ImGuiConfigFlags.NavEnableKeyboard);
 		io.addConfigFlags(ImGuiConfigFlags.DockingEnable);
 		io.addConfigFlags(ImGuiConfigFlags.ViewportsEnable);
