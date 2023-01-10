@@ -12,7 +12,14 @@ import org.lwjgl.opengl.GL32;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.MemoryUtil;
 
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.URI;
+import java.net.URL;
 import java.nio.IntBuffer;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Objects;
 
 /**
@@ -25,7 +32,9 @@ public abstract class Window extends KeyList {
 	private final ImGuiImplGlfw imGuiGlfw = new ImGuiImplGlfw();
 	private final ImGuiImplGl3 imGuiGl3 = new ImGuiImplGl3();
 	
-	/** Pointer to the native GLFW window. */
+	/**
+	 * Pointer to the native GLFW window.
+	 */
 	protected long handle;
 	
 	private String glslVersion = null;
@@ -148,7 +157,7 @@ public abstract class Window extends KeyList {
 			if (glfwGetWindowMonitor(windowHnd) != NULL) {
 				glfwSetWindowMonitor(windowHnd, NULL, xpos, ypos, width, height, 0);
 			}*/
-			
+		
 		// Some Stuff
 		GLFW.glfwMakeContextCurrent(handle);
 		GL.createCapabilities();
@@ -168,6 +177,25 @@ public abstract class Window extends KeyList {
 //		});
 	}
 	
+	private String getPathToResource(String name) {
+		name = "/fonts/" + name;
+		try {
+			String path = Main.class.getResource(name).getFile();
+			if (path.contains(".jar")) {
+				path = path.substring(
+						6, path.substring(
+								0, path.length() - name.length() - 1
+						).lastIndexOf("/")
+				) + "/resources" + name;
+			} else {
+				path = path.substring(1);
+			}
+			return path;
+		} catch (Exception ignored) {
+			throw new RuntimeException("File could not be found: " + name);
+		}
+	}
+	
 	/**
 	 * Method to initialize Dear ImGui context. Could be overridden to do custom Dear ImGui setup before application start.
 	 */
@@ -175,7 +203,7 @@ public abstract class Window extends KeyList {
 		ImGui.createContext();
 		
 		final ImGuiIO io = ImGui.getIO();
-		 io.setIniFilename(null);
+		io.setIniFilename(null);
 		io.addConfigFlags(ImGuiConfigFlags.NavEnableKeyboard);
 		io.addConfigFlags(ImGuiConfigFlags.DockingEnable);
 		io.addConfigFlags(ImGuiConfigFlags.ViewportsEnable);
@@ -209,8 +237,8 @@ public abstract class Window extends KeyList {
 		style.setTabRounding(4);
 		
 		final ImFontConfig fontConfig = new ImFontConfig();
-		normalFont = io.getFonts().addFontFromFileTTF("src/main/resources/CascadiaCode.ttf", 16, fontConfig);
-		titleFont = io.getFonts().addFontFromFileTTF("src/main/resources/CascadiaCode.ttf", 100, fontConfig);
+		normalFont = io.getFonts().addFontFromFileTTF(getPathToResource("CascadiaCode.ttf"), 16, fontConfig);
+		titleFont = io.getFonts().addFontFromFileTTF(getPathToResource("CascadiaCode.ttf"), 100, fontConfig);
 		io.getFonts().build();
 		io.setFontDefault(normalFont);
 		
@@ -218,7 +246,7 @@ public abstract class Window extends KeyList {
 	}
 	
 	public void updateSettings() {
-		Theme.selected = Settings.brightMode.get() ? 1:0;
+		Theme.selected = Settings.brightMode.get() ? 1 : 0;
 		ImGui.getStyle().setColors(Theme.getTheme());
 		
 		if (Settings.fullscreen.get()) {
@@ -231,13 +259,20 @@ public abstract class Window extends KeyList {
 			GLFW.glfwSetWindowSize(handle, Settings.getResolution()[0], Settings.getResolution()[1]);
 		}
 		
-		GLFW.glfwSwapInterval(Settings.vsync.get() ? GLFW.GLFW_TRUE:GLFW.GLFW_FALSE);
+		GLFW.glfwSwapInterval(Settings.vsync.get() ? GLFW.GLFW_TRUE : GLFW.GLFW_FALSE);
 	}
 	
-	public void keyEvent(final KeyEvent event) { }
-	public void mouseButtonEvent(final MouseButtonEvent event) { }
-	public void mouseMoveEvent(final MouseMoveEvent event) { }
-	public void mouseWheelEvent(final MouseWheelEvent event) { }
+	public void keyEvent(final KeyEvent event) {
+	}
+	
+	public void mouseButtonEvent(final MouseButtonEvent event) {
+	}
+	
+	public void mouseMoveEvent(final MouseMoveEvent event) {
+	}
+	
+	public void mouseWheelEvent(final MouseWheelEvent event) {
+	}
 	
 	
 	public void launch() {
@@ -307,7 +342,8 @@ public abstract class Window extends KeyList {
 	/**
 	 * Method called every frame, after calling {@link #process()} method.
 	 */
-	protected void postProcess() { }
+	protected void postProcess() {
+	}
 	
 	/**
 	 * Method called in the end of the main cycle.
