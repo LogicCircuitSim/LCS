@@ -27,7 +27,7 @@ public class Canvas {
 	
 	public void draw() {
 		ImGui.sameLine();
-		ImGui.text(String.format("Offset: %4.1f | %4.1f", scrolling.x, scrolling.y));
+		ImGui.text(String.format("| Offset: %d, %d", (int) scrolling.x, (int) scrolling.y));
 		
 		// Using InvisibleButton() as a convenience 1) it will advance the layout cursor and 2) allows us to use IsItemHovered()/IsItemActive()
 		ImVec2 canvasStartPos = ImGui.getCursorScreenPos();    // ImDrawList API uses screen coordinates!

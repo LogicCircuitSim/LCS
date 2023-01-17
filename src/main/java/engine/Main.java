@@ -13,7 +13,7 @@ import imgui.type.ImString;
 import java.util.Stack;
 
 public class Main extends Window {
-	public String version = "0.1.1";
+	public String version = "0.1.5.1";
 	public Stack<SCENE> sceneStack;
 	public ImGuiViewport mainViewport;
 	private boolean showTextBoxName = false;
@@ -32,9 +32,9 @@ public class Main extends Window {
 	
 	@Override
 	protected void preRun() {
-		BoardManager.addBoard("Test");
-		BoardManager.addBoard("Lol");
-		BoardManager.addBoard("DAVID!");
+		BoardManager.addBoard("Test 1");
+		BoardManager.addBoard("Test 2");
+		BoardManager.addBoard("Test 3");
 		
 		sceneStack = new Stack<>();
 		sceneStack.push(SCENE.MAIN_MENU);
@@ -64,7 +64,7 @@ public class Main extends Window {
 	
 	// ==========================================[ Main Menu ]==========================================
 	private void showMainMenu() {
-		if (fullSizeWindow("Main Menu")) {
+		if (fullSizeWindow("Hauptmenu")) {
 			// Title
 			ImGui.pushFont(titleFont);
 			ImGui.setCursorPos((mainViewport.getSizeX() / 2) - (ImGui.calcTextSize("L.C.S.").x / 2), 50);
@@ -73,7 +73,7 @@ public class Main extends Window {
 			
 			// New Board
 			ImGui.setCursorPos(100, 200);
-			if (paddedButton("New Board", 15, 10))
+			if (paddedButton("Neues Board", 15, 10))
 				showTextBoxName = true;
 			
 			if (showTextBoxName) {
@@ -86,14 +86,18 @@ public class Main extends Window {
 					showTextBoxName = false;
 				}
 				ImGui.sameLine();
-				if (paddedButton("Create", 15, 10) && !newBoardName.isEmpty()) {
-					BoardManager.newBoard(newBoardName.get());
-					newBoardName.clear();
-					addScene(SCENE.IN_BOARD);
-					showTextBoxName = false;
+				if (paddedButton("Erstellen", 15, 10)) {
+					System.out.println("erstellen...");
+					if (!newBoardName.isEmpty()) {
+						System.out.println("nicht leer...");
+						BoardManager.newBoard(newBoardName.get());
+						newBoardName.clear();
+						addScene(SCENE.IN_BOARD);
+						showTextBoxName = false;
+					}
 				}
 				ImGui.sameLine();
-				if (paddedButton("Cancel", 15, 10)) {
+				if (paddedButton("Abbruch", 15, 10)) {
 					newBoardName.clear();
 					showTextBoxName = false;
 				}
@@ -101,17 +105,17 @@ public class Main extends Window {
 			
 			// Open Board
 			ImGui.setCursorPos(100, 250);
-			if (paddedButton("Open Board", 15, 10))
+			if (paddedButton("Board öffnen", 15, 10))
 				addScene(SCENE.BOARD_LIST);
 			
 			// Settings
 			ImGui.setCursorPos(100, 300);
-			if (paddedButton("Settings", 15, 10))
+			if (paddedButton("Einstellungen", 15, 10))
 				addScene(SCENE.SETTINGS);
 			
 			// Quit
 			ImGui.setCursorPos(100, 350);
-			if (paddedButton("Quit", 15, 10))
+			if (paddedButton("Beenden", 15, 10))
 				quit();
 			
 			// Version
