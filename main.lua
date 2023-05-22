@@ -1,162 +1,101 @@
 -- ==============================================================[ IMPORTS ]===================================================================--
-print("Version: 1.7.1")
-print("Starting...")
-local utf8 = require("utf8")
-function error_printer(msg, layer)
-	print((debug.traceback("Error: " .. tostring(msg), 1+(layer or 1)):gsub("\n[^\n]+$", "")))
-end
-function love.errorhandler(msg)
-	msg = tostring(msg)
-	error_printer(msg, 2)
-	if not love.window or not love.graphics or not love.event then
-		return
-	end
-	if not love.graphics.isCreated() or not love.window.isOpen() then
-		local success, status = pcall(love.window.setMode, 800, 600)
-		if not success or not status then
-			return
-		end
-	end
-	if love.mouse then
-		love.mouse.setVisible(true)
-		love.mouse.setGrabbed(false)
-		love.mouse.setRelativeMode(false)
-		if love.mouse.isCursorSupported() then
-			love.mouse.setCursor()
-		end
-	end
-	if love.joystick then
-		for i,v in ipairs(love.joystick.getJoysticks()) do
-			v:setVibration()
-		end
-	end
-	if love.audio then love.audio.stop() end
-	love.graphics.reset()
-	local font = love.graphics.setNewFont(16)
-	love.graphics.setColor(246/255, 246/255, 246/255)
-	local trace = debug.traceback()
-	love.graphics.origin()
-	local sanitizedmsg = {}
-	for char in msg:gmatch(utf8.charpattern) do
-		table.insert(sanitizedmsg, char)
-	end
-	sanitizedmsg = table.concat(sanitizedmsg)
-	local err = {}
-	table.insert(err, "Error\n")
-	table.insert(err, sanitizedmsg)
-	if #sanitizedmsg ~= #msg then
-		table.insert(err, "Invalid UTF-8 string in error message.")
-	end
-	table.insert(err, "\n")
-	for l in trace:gmatch("(.-)\n") do
-		if not l:match("boot.lua") then
-			l = l:gsub("stack traceback:", "Traceback\n")
-			table.insert(err, l)
-		end
-	end
-	local p = ""
-	for i = 3, #err, 1 do p = p..err[i].."\n" end
-	p = p:gsub("\t", "")
-	p = p:gsub("%[string \"(.-)\"%]", "%1")
-	local function draw()
-		if not love.graphics.isActive() then return end
-		local pos = 70
-		love.graphics.clear(30/255, 30/255, 30/255)
-		love.graphics.setColor(248/255, 46/255, 105/255)
-		love.graphics.printf(err[1], pos, pos, love.graphics.getWidth() - pos)
-		love.graphics.setColor(225/255, 157/255, 40/255)
-		love.graphics.printf(err[2], pos, pos+40, love.graphics.getWidth() - pos)
-		love.graphics.setColor(166/255, 226/255, 41/255)
-		love.graphics.printf(p, pos, pos*2, love.graphics.getWidth() - pos)
-		love.graphics.present()
-	end
-	return function()
-		love.event.pump()
+print('\nVersion: 1.7.1')
+print('Starting...')
+require 'fancyerror'
 
-		for e, a, b, c in love.event.poll() do
-			if e == "quit" then return 1
-			elseif e == "keypressed" and a == "escape" then return 1 end
-		end
+require 'noahsutils'
+require 'classes'
+local json = require 'json'
+local Camera = require 'camera'
 
-		draw()
-
-		if love.timer then love.timer.sleep(0.1) end
-	end
-end
-local json = require("lib.json")
-require "lib.noahsutils"
-require "classes"
-local font = love.graphics.newFont("fonts/main.ttf", 20)
-font:setFilter("nearest", "nearest", 8)
+local font = love.graphics.newFont('fonts/main.ttf', 20)
+font:setFilter('nearest', 'nearest', 8)
 love.graphics.setFont(font)
 
 -- =============================================================[ VARIABLES ]==================================================================--
 
 local lastX, lastY = 0, 0
 
+-- worker
 local gates = Collection:new()
 local peripherals = Collection:new()
 local connections = Collection:new()
 local groups = Collection:new()
+
+-- idk
 local selectedPinID = 0
+
+-- main
 local isDraggingObject = false
-local draggedObjectID = 0
 local isDraggingSelection = false
-local isSelecting = false
-local selection = { x1 = 0, y1 = 0, x2 = 0, y2 = 0, ids = {} }
 local isDraggingGroup = false
+
+local draggedObjectID = 0
 local draggedGroupID = 0
+
+local selection = { x1 = 0, y1 = 0, x2 = 0, y2 = 0, ids = {} }
+local isSelecting = false
+local dontSelect = false
+
 local showPlotter = false
 local plotterID = 0
 local plotterData = {}
+
+-- main?
 local currentBoard = 1
 
+-- main
 local inMenu = false
 local showHelp, showDebug, showTelemetry = false, false, false
 local telemetryInterval, telemetryIntervalLast = 500, love.timer.getTime()
 local telemetry, telemetryShow = {}, {}
-local maxFPS = 500
+local maxFPS = 60
 local fullscreen = false
 
 local timeOutMessage = ""
 local timeOutTimer = 0
 
+local computeThread = {}
+local computeThreadUPS, computeThreadMaxUPS = 0, 10000
+
+local style = {}
+
+local camera = {}
+
+
 -- ===========================================================[ MAIN FUNCTIONS ]===============================================================--
 
 function love.load()
 	love.graphics.setBackgroundColor(0.11, 0.11, 0.11)
-    addDefaults()
+    computeThread = love.thread.newThread("computeThread.lua")
+	computeThread:start(computeThreadMaxUPS)
+
+	-- loadBoard()
+	addDefaults()
+
+	camera = Camera.newSmooth(40, 0.5, 5)
+	
+	local done = love.thread.getChannel("setup"):supply(true)
 end
 
 function love.update(dt)
-	if inMenu then 
+	if inMenu then
 		-- do menu stuff
 	else
+		camera:update(dt)
+		mx, my = camera:getScreenPos( love.mouse.getPosition() )
+		-- update board objects
 		local time = love.timer.getTime()
 		for bob in myBobjects() do bob:update() end
 		telemetry.updateTimeBobjects = love.timer.getTime() - time
 
+		-- update connections
 		time = love.timer.getTime()
 		for con in myConnections() do
-			local inputpin  = getPinByID(con.inputpinID)
-			local outputpin = getPinByID(con.outputpinID)
-			if inputpin and outputpin then
-				inputpin.state = outputpin.state 
-			end
+			con.inputpin.state = con.outputpin.state
 		end
 		telemetry.updateTimeConnections = love.timer.getTime() - time
 
-		if isDraggingObject then
-			local gate = getGateByID(draggedObjectID)
-			local peripheral = getPeripheralByID(draggedObjectID)
-			if gate then
-				gate.pos.x = love.mouse.getX() - GATEgetWidth()/2
-				gate.pos.y = love.mouse.getY() - gate:getHeight()/2
-			elseif peripheral then
-				peripheral.pos.x = love.mouse.getX() - PERIPHERALgetWidth()/2
-				peripheral.pos.y = love.mouse.getY() - peripheral:getHeight()/2
-			end
-		end
 	end
 	if timeOutTimer > 0 then
 		timeOutTimer = timeOutTimer - (dt * 1000)
@@ -165,7 +104,8 @@ function love.update(dt)
 		maxFPS = love.timer.getFPS()
 	end
 	telemetry.dt = dt
-
+	
+	computeThreadUPS = love.thread.getChannel("ups"):pop() or computeThreadUPS
 end
 
 function love.draw()
@@ -178,7 +118,7 @@ function love.draw()
 				love.graphics.setColor(0.2, 0.4, 1)
 				if love.mouse.isDown(1) then
 					currentBoard = i
-					load()
+					loadBoard()
 					inMenu = false
 				end
 			else
@@ -187,6 +127,9 @@ function love.draw()
 			love.graphics.print("Board "..i, 20, 80 + i*30)
 		end
 	else
+		-- camera
+		mx, my = camera:getScreenPos( love.mouse.getPosition() )
+		camera:set()
 		-- grid points
 		love.graphics.setColor(0.15, 0.15, 0.15)
 		local step = 50
@@ -198,46 +141,16 @@ function love.draw()
 
 		-- groups
 		for i,group in ipairs(groups:all()) do
-			if isDraggingGroup and draggedGroupID == i then
-				group.x1 = group.x1 + (love.mouse.getX() - lastX)
-				group.x2 = group.x2 + (love.mouse.getX() - lastX)
-				group.y1 = group.y1 + (love.mouse.getY() - lastY)
-				group.y2 = group.y2 + (love.mouse.getY() - lastY)
-
-				-- move bobjects
-				for bob in myBobjects() do
-					if collect(group.ids):contains(bob.id) then
-						bob.pos.x = bob.pos.x + (love.mouse.getX() - lastX)
-						bob.pos.y = bob.pos.y + (love.mouse.getY() - lastY)
-					end
-				end
-			end
-
 			love.graphics.setColor(0.05, 0.05, 0.05, 0.6)
 			love.graphics.rectangle("fill", group.x1, group.y1, group.x2 - group.x1, group.y2 - group.y1, 3)
-		end
-
-		--dragging selection
-		if isDraggingSelection and not isDraggingGroup then
-			for i,id in ipairs(selection.ids) do
-				local bob = getBobByID(id)
-				if bob then
-					bob.pos.x = bob.pos.x + (love.mouse.getX() - lastX)
-					bob.pos.y = bob.pos.y + (love.mouse.getY() - lastY)
-				end
-			end
-			selection.x1 = selection.x1 + (love.mouse.getX() - lastX)
-			selection.x2 = selection.x2 + (love.mouse.getX() - lastX)
-			selection.y1 = selection.y1 + (love.mouse.getY() - lastY)
-			selection.y2 = selection.y2 + (love.mouse.getY() - lastY)
 		end
 
 		-- selection
 		if isSelecting then
 			love.graphics.setColor(0.2, 0.2, 0.3, 0.5)
-			love.graphics.rectangle("fill", selection.x1, selection.y1, love.mouse.getX() - selection.x1, love.mouse.getY() - selection.y1)
+			love.graphics.rectangle("fill", selection.x1, selection.y1, mx - selection.x1, my - selection.y1)
 			love.graphics.setColor(0.2, 0.2, 0.3)
-			love.graphics.rectangle("line", selection.x1, selection.y1, love.mouse.getX() - selection.x1, love.mouse.getY() - selection.y1)
+			love.graphics.rectangle("line", selection.x1, selection.y1, mx - selection.x1, my - selection.y1)
 		elseif selection.x1 ~= selection.x2 and selection.y1 ~= selection.y2 then
 			love.graphics.setColor(0.2, 0.2, 0.3, 0.5)
 			love.graphics.rectangle("fill", selection.x1, selection.y1, selection.x2 - selection.x1, selection.y2 - selection.y1, 2)
@@ -245,13 +158,15 @@ function love.draw()
 			love.graphics.rectangle("line", selection.x1, selection.y1, selection.x2 - selection.x1, selection.y2 - selection.y1, 2)
 		end
 		
+		-- GET FROM COMPUTE THREAD
+
 		-- connections
 		time = love.timer.getTime()
 		love.graphics.setColor(0, 0.71, 0.48)
 		love.graphics.setLineWidth(2)
 		for con in myConnections() do
-			local inputpinPos = getPinPosByID(con.inputpinID)
-			local outputpinPos = getPinPosByID(con.outputpinID)
+			local inputpinPos = con.inputpin.pos or false
+			local outputpinPos = con.outputpin.pos or false
 			if inputpinPos and outputpinPos then
 				local offset = 80
 				local curve = love.math.newBezierCurve({ 
@@ -291,8 +206,9 @@ function love.draw()
 			end
 		end
 
+		camera:set()
+
 		-- plotter
-		time = love.timer.getTime()
 		if showPlotter then
 			local w, h = love.graphics.getDimensions()
 			local pw, ph = w/4*2, 150
@@ -322,31 +238,32 @@ function love.draw()
 				end
 			end
 		end
-		telemetry.drawTimePlotter = love.timer.getTime() - time
 
 		if showHelp then
 			love.graphics.setColor(1, 1, 1)
-			love.graphics.print("1-AND", 10, 150)
-			love.graphics.print("2-OR", 10, 180)
-			love.graphics.print("3-NOT", 10, 210)
-			love.graphics.print("4-NAND", 10, 240)
-			love.graphics.print("5-NOR", 10, 270)
-			love.graphics.print("6-XOR", 10, 300)
-			love.graphics.print("7-XNOR", 10, 330)
-			love.graphics.print("8-INPUT", 10, 360)
-			love.graphics.print("9-CLOCK", 10, 390)
-			love.graphics.print("0-OUTPUT", 10, 420)
-			love.graphics.print("b-BUFFER", 10, 450)
-			
-			love.graphics.print("ESC-TOGGLE MENU", 10, 500)
-			love.graphics.print("STRG+S-SAVE", 10, 530)
-			love.graphics.print("STRG+L-LOAD", 10, 560)
-			love.graphics.print("STRG+C-COPY", 10, 590)
-			love.graphics.print("STRG+V-PASTE", 10, 620)
-			love.graphics.print("STRG+R-RESET", 10, 650)
-			love.graphics.print("STRG+D-DEFAULTS", 10, 680)
-			love.graphics.print("STRG+P-PLOTTER", 10, 710)
-			love.graphics.print("STRG+Q-QUIT", 10, 740)
+			love.graphics.print(nt[[
+				1-AND
+				2-OR
+				3-NOT
+				4-NAND
+				5-NOR
+				6-XOR
+				7-XNOR
+				8-INPUT
+				9-CLOCK
+				0-OUTPUT
+				b-BUFFER
+				
+				ESC-TOGGLE MENU
+				STRG+S-SAVE
+				STRG+L-LOAD
+				STRG+C-COPY
+				STRG+V-PASTE
+				STRG+R-RESET
+				STRG+D-DEFAULTS
+				STRG+P-PLOTTER
+				STRG+Q-QUIT
+				]], 10, 150)
 		end
 
 		if showDebug then
@@ -355,21 +272,55 @@ function love.draw()
 		end
 
 		if showTelemetry then
-			if love.timer.getTime()*1000 - telemetryIntervalLast*1000 > telemetryInterval then
+			if love.timer.getTime() - telemetryIntervalLast > telemetryInterval/1000 then
 				for k,v in pairs(telemetry) do
 					telemetryShow[k] = v
 				end
+				telemetryShow.stats = love.graphics.getStats()
 				telemetryIntervalLast = love.timer.getTime()
 			end
 			love.graphics.setColor(1, 0.6, 0.6)
 			love.graphics.print(string.format(
-				"Timings:\n\nBoard Objects Update: %dµs\nConnections Update: %dµs\n\nBoard Objects Draw: %dµs\nConnections Draw: %dµs\nPlotter Draw: %dµs\n\nTotal: %dµs",
-				telemetryShow.updateTimeBobjects*1000000, telemetryShow.updateTimeConnections*1000000, telemetryShow.drawTimeBobjects*1000000, telemetryShow.drawTimeConnections*1000000, telemetryShow.drawTimePlotter*1000000, telemetryShow.dt*1000000
-			), love.graphics.getWidth()-300, 400)
+				nt[[
+					Timings:
+					
+					Board Objects Update: %s
+					Connections Update: %s
+					
+					Board Objects Draw: %s
+					Connections Draw: %s
+					
+					Total: %s
+
+
+					Love Stats:
+
+					Drawcalls: %d
+					Canvas Switches: %d
+					Texture Memory: %d
+					Images: %d
+					Canvases: %d
+					Shader Switches: %d
+					Drawcalls Batched: %d
+				]],
+				formatTime(telemetryShow.updateTimeBobjects),
+				formatTime(telemetryShow.updateTimeConnections),
+				formatTime(telemetryShow.drawTimeBobjects),
+				formatTime(telemetryShow.drawTimeConnections),
+				formatTime(telemetryShow.dt),
+				telemetryShow.stats.drawcalls,
+				telemetryShow.stats.canvasswitches,
+				telemetryShow.stats.texturememory,
+				telemetryShow.stats.images,
+				telemetryShow.stats.canvases,
+				telemetryShow.stats.shaderswitches,
+				telemetryShow.stats.drawcallsbatched
+			),
+			love.graphics.getWidth()-300, 400)
 		end
 		
 		love.graphics.setColor(1, 1, 1)
-		love.graphics.print(("FPS: %d | %.1f%% Lag | Current Board: %d (Press [H] for Help)"):format(tostring(love.timer.getFPS()), (100-love.timer.getFPS()/maxFPS*100), currentBoard), 10, 10)
+		love.graphics.print(("FPS: %s | UPS: %s | %.1f%% Lag | Current Board: %d (Press [H] for Help)"):format(tostring(love.timer.getFPS()), nfc(computeThreadUPS), (100-love.timer.getFPS()/maxFPS*100), currentBoard), 10, 10)
 		if isDraggingGroup or isDraggingObject or isDraggingSelection then
 			love.graphics.print(isDraggingSelection and "Dragging Selection" or (isDraggingGroup and "Dragging Group ID: "..tostring(draggedGroupID) or (isDraggingObject and "Dragging Object ID: "..tostring(draggedObjectID) or "")), 10, 70)
 		end
@@ -381,40 +332,41 @@ function love.draw()
 	lastX, lastY = love.mouse.getPosition()
 end
 
-function love.resize(w, h)
-	for bob in myBobjects() do 
-		if bob.pos.x+50 > w then bob.pos.x = w-100 end
-		if bob.pos.y+50 > h then bob.pos.y = h-100 end
-	end
+function love.quit()
+	local id = love.thread.getChannel("kill"):push(true)
+	repeat until love.thread.getChannel("kill"):hasRead(id)
 end
 
 -- ==========================================================[ INPUT FUNCTIONS ]===============================================================--
 
 function love.mousepressed(x, y, button)
+	x,y = camera:getScreenPos( x,y )
 	--=====================[ LEFT CLICK ]=====================--
 	if button == 1 then
-		for bob in myBobjects() do			
+		dontSelect = false
+		for bob in myBobjects() do
 			local inpin  = bob:getInputPinAt(x, y)
 			local outpin = bob:getOutputPinAt(x, y)
 
 			if selectedPinID == 0 then
 				if outpin then
+					dontSelect = true
 					outpin.isConnected = true
 					selectedPinID = outpin.id or selectedPinID
 				end
 			else
 				if inpin then
+					dontSelect = true
 					if not inpin.isConnected then
 						inpin.isConnected = true
-						connections:append({ outputpinID=selectedPinID, inputpinID=inpin.id })
+						addConnection({ outputpin=getPinByID(selectedPinID), inputpin=inpin })
 						selectedPinID = 0
 					end
 				end
 			end
-
-			if bob:isInside(x, y) and inpin == nil and outpin == nil then
+			if bob:isInside(x, y) and not dontSelect then
 				if bob.name == "INPUT" then
-				bob:flip()
+					bob:flip()
 				elseif bob.name == "OUTPUT" then
 					if plotterID == bob.id then
 						showPlotter = false
@@ -425,26 +377,19 @@ function love.mousepressed(x, y, button)
 						showPlotter = true
 					end
 				end
-			else
-				isSelecting = true
-				selection.x1 = x
-				selection.y1 = y
-				selection.x2 = x
-				selection.y2 = y
+				dontSelect = true
 			end
+		end
+		if not dontSelect then
+			isSelecting = true
+			selection.x1 = x
+			selection.y1 = y
+			selection.x2 = x
+			selection.y2 = y
 		end
 	--=====================[ RIGHT CLICK ]=====================--
 	elseif button == 2 then
-		if selectedPinID > 0 then
-			local pin = getPinByID(selectedPinID)
-			pin.isConnected = false
-			selectedPinID = 0
-		else
-			local pinID = getPinIDByPos(x, y)
-			if pinID then
-				removeConnectionWithPinID(pinID)
-			end
-		end
+		
 	--=====================[ MIDDLE CLICK ]=====================--
 	elseif button == 3 then
 		for i,group in ipairs(groups:all()) do
@@ -471,8 +416,78 @@ function love.mousepressed(x, y, button)
 	end
 end
 
+function love.mousemoved(x, y, dx, dy)
+	x, y = camera:getScreenPos(x, y)
+	sdx, sdy = camera:applyScale(dx, dy)
+	
+	if isDraggingGroup then
+		local group = groups:get(draggedGroupID)
+		group.x1 = group.x1 + sdx
+		group.y1 = group.y1 + sdy
+		group.x2 = group.x2 + sdx
+		group.y2 = group.y2 + sdy
+
+		for i,id in ipairs(group.ids) do
+			local bob = getBobByID(id)
+			if bob then
+				bob.pos.x = bob.pos.x + sdx
+				bob.pos.y = bob.pos.y + sdy
+			end
+		end
+	elseif isDraggingSelection then
+		selection.x1 = selection.x1 + sdx
+		selection.y1 = selection.y1 + sdy
+		selection.x2 = selection.x2 + sdx
+		selection.y2 = selection.y2 + sdy
+
+		for i,id in ipairs(selection.ids) do
+			local bob = getBobByID(id)
+			if bob then
+				bob.pos.x = bob.pos.x + sdx
+				bob.pos.y = bob.pos.y + sdy
+			end
+		end
+	elseif isDraggingObject then
+		local bob = getBobByID(draggedObjectID)
+		bob.pos.x = bob.pos.x + sdx
+		bob.pos.y = bob.pos.y + sdy
+	else
+		if love.mouse.isDown(2) then
+			camera:move( dx,dy )
+		end
+	end
+
+	--dragging selection
+	-- if isDraggingSelection and not isDraggingGroup then
+	-- 	for i,id in ipairs(selection.ids) do
+	-- 		local bob = getBobByID(id)
+	-- 		if bob then
+	-- 			bob.pos.x = bob.pos.x + (love.mouse.getX() - lastX)
+	-- 			bob.pos.y = bob.pos.y + (love.mouse.getY() - lastY)
+	-- 		end
+	-- 	end
+	-- 	selection.x1 = selection.x1 + (love.mouse.getX() - lastX)
+	-- 	selection.x2 = selection.x2 + (love.mouse.getX() - lastX)
+	-- 	selection.y1 = selection.y1 + (love.mouse.getY() - lastY)
+	-- 	selection.y2 = selection.y2 + (love.mouse.getY() - lastY)
+	-- end
+
+	-- if isDraggingObject then
+	-- 	local gate = getGateByID(draggedObjectID)
+	-- 	local peripheral = getPeripheralByID(draggedObjectID)
+	-- 	if gate then
+	-- 		gate.pos.x = love.mouse.getX() - GATEgetWidth()/2
+	-- 		gate.pos.y = love.mouse.getY() - gate:getHeight()/2
+	-- 	elseif peripheral then
+	-- 		peripheral.pos.x = love.mouse.getX() - PERIPHERALgetWidth()/2
+	-- 		peripheral.pos.y = love.mouse.getY() - peripheral:getHeight()/2
+	-- 	end
+	-- end
+end
+
 function love.mousereleased(x, y, button)
-	if button == 1 then
+	x, y = camera:getScreenPos(x, y)
+	if button == 1 and not dontSelect then
 		isSelecting = false
 		selection.x2 = x
 		selection.y2 = y
@@ -491,7 +506,7 @@ function love.mousereleased(x, y, button)
 			end
 		end
 	elseif button == 3 then
-		-- check if dragged object is below or above any near bobject
+		-- check if dragged object is below or above any near bobject | TODO
 		if draggedObjectID > 0 then	end
 
 		isDraggingObject = false
@@ -504,8 +519,6 @@ end
 
 function love.wheelmoved(dx, dy)
     if love.keyboard.isDown("lshift") then
-    elseif love.keyboard.isDown("lctrl") then
-    else
 		for bob in myBobjects() do
 			if bob:isInside(love.mouse.getX(), love.mouse.getY()) then
 				if bob.name == "CLOCK" then
@@ -523,36 +536,125 @@ function love.wheelmoved(dx, dy)
 				end
 			end
 		end
+    elseif love.keyboard.isDown("lctrl") then
+    else
+		camera:zoom(dy)
 	end
 end
 
 function love.keypressed(key, scancode, isrepeat)
-	if key == "space" then
-		prinspect(telemetry)
-	end
-	if key == "f11" then
+	if keyPressed(key, 'escape') then inMenu = not inMenu end
+
+	if keyPressed(key, 'f11') then
 		fullscreen = not fullscreen
 		love.window.setFullscreen(fullscreen, "exclusive")
-	end	
-	if key == "escape" then
-		inMenu = not inMenu
 	end
-	if not inMenu then
+
+	if keyPressed(key, 's', 'ctrl', not inMenu) then saveBoard() end
+	if keyPressed(key, 'l', 'ctrl', not inMenu) then loadBoard() end
+	if keyPressed(key, 'r', 'ctrl', not inMenu) then resetBoard() end
+	if keyPressed(key, 'd', 'ctrl', not inMenu) then addDefaults() end
+
+	if keyPressed(key, 'p', 'ctrl', not inMenu) then showPlotter = not showPlotter end
+	if keyPressed(key, 'g', 'ctrl', not inMenu) then graphicSettings.betterGraphics = not graphicSettings.betterGraphics end
+
+	if keyPressed(key, 'c', 'ctrl', not inMenu) then -- HERE update to save groups too
+		love.system.setClipboardText(json.encode({ gates=gates:all(), peripherals=peripherals:all(), connections=connections:all() }))
+		showMessage("Board Data copied to Clipboard!")
+	end
+	if keyPressed(key, 'v', 'ctrl', not inMenu) then
+		local text = love.system.getClipboardText()
+		if text then
+			if text:match("gates") and text:match("peripherals") and text:match("connections") then
+				local data = json.decode(text)
+				if data then
+					resetBoard()
+					for i, gatedata in ipairs(data.gates) do			
+						addGate(loadGATE(gatedata))
+					end
+					for i, peripheraldata in ipairs(data.peripherals) do
+						addPeripheral(loadPERIPHERAL(peripheraldata))
+					end
+					for i, connection in ipairs(data.connections) do
+						connections:append(connection)
+					end
+					showMessage("Board Data loaded from Clipboard!")
+				end
+			end
+		end
+	end
+
+	if keyPressed(key, 'q', 'ctrl', not inMenu) then love.event.quit() end
+
+	if keyPressed(key, 'f1', nil, not inMenu) then showDebug = not showDebug end
+	if keyPressed(key, 'f3', nil, not inMenu) then showTelemetry = not showTelemetry end
+
+	if keyPressed(key, 'h', nil, not inMenu) then showHelp = not showHelp end
+
+	if keyPressed(key, 'g', nil, not inMenu) then
+		addGroup()
+		selection = {x1=0, y1=0, x2=0, y2=0, ids={}}
+	end
+
+	if keyPressed(key, 'delete', nil, not inMenu) then
+		if selectedPinID ~= 0 then -- First Pin of new Connection selected
+			local pin = getPinByID(selectedPinID)
+			if pin then pin.isConnected = false end
+			selectedPinID = 0
+		else  -- no Pin selected
+			local pinID = getPinIDByPos(x, y)
+			if pinID then
+				removeConnectionWithPinID(pinID)
+			else
+				local bobID = getBobIDByPos(love.mouse.getX(), love.mouse.getY())
+				if bobID then
+					removeBobByID(bobID)
+				end
+			end
+		end
+	end
+
+	if keyPressed(key, 'delete', 'shift', not inMenu) then
+		local groupID = getGroupIDByPos(love.mouse.getX(), love.mouse.getY())
+		if groupID then
+			removeGroupByID(groupID, love.keyboard.isDown("lalt"))
+		end
+	end
+
+	if keyPressed(key, any{'1','2','3','4','5','6','7','8','9'}, 'alt', not inMenu) then
+		saveBoard()
+		currentBoard = tonumber(key)
+		loadBoard()
+	end
+
+	if keyPressed(key, '1', nil, not inMenu) then addPeripheral(constructINPUT (love.mouse.getX() - PERIPHERALgetWidth()/2, love.mouse.getY() - PERIPHERALgetHeight()/2)) end
+	if keyPressed(key, '2', nil, not inMenu) then addPeripheral(constructOUTPUT(love.mouse.getX() - PERIPHERALgetWidth()/2, love.mouse.getY() - PERIPHERALgetHeight()/2)) end
+	if keyPressed(key, '3', nil, not inMenu) then addPeripheral(constructCLOCK (love.mouse.getX() - PERIPHERALgetWidth()/2, love.mouse.getY() - PERIPHERALgetHeight()/2)) end
+	if keyPressed(key, '4', nil, not inMenu) then addPeripheral(constructBUFFER(love.mouse.getX() - PERIPHERALgetWidth()/2, love.mouse.getY() - PERIPHERALgetHeight()/2)) end
+	if keyPressed(key, '5', nil, not inMenu) then addGate(constructAND (love.mouse.getX() - GATEgetWidth()/2, love.mouse.getY() - GATEgetHeight()/2)) end
+	if keyPressed(key, '6', nil, not inMenu) then addGate(constructOR  (love.mouse.getX() - GATEgetWidth()/2, love.mouse.getY() - GATEgetHeight()/2)) end
+	if keyPressed(key, '7', nil, not inMenu) then addGate(constructNOT (love.mouse.getX() - GATEgetWidth()/2, love.mouse.getY() - GATEgetHeight()/2)) end
+	-- if keyPressed(key, '7', nil, not inMenu) then addGate(constructNAND(love.mouse.getX() - GATEgetWidth()/2, love.mouse.getY() - GATEgetHeight()/2)) end
+	-- if keyPressed(key, '8', nil, not inMenu) then addGate(constructNOR (love.mouse.getX() - GATEgetWidth()/2, love.mouse.getY() - GATEgetHeight()/2)) end
+	-- if keyPressed(key, '9', nil, not inMenu) then addGate(constructXOR (love.mouse.getX() - GATEgetWidth()/2, love.mouse.getY() - GATEgetHeight()/2)) end
+	-- if keyPressed(key, '0', nil, not inMenu) then addGate(constructXNOR(love.mouse.getX() - GATEgetWidth()/2, love.mouse.getY() - GATEgetHeight()/2)) end
+
+	if keyPressed(key, '0', nil, not inMenu) then camera:reset() end
+	if keyPressed(key, 'space', nil, not inMenu) then camera:center() end
+
+	if keyPressed(key, 'f') then
+		love.thread.getChannel("printDebug"):push(true)
+	end
+
+	if false then
 		if love.keyboard.isDown("lctrl", "rctrl") then
-			if key == "s" then
-				save()
-			elseif key == "l" then
-				load()
-			elseif key == "r" then
-				resetBoard()
-			elseif key == "d" then
-				addDefaults()
-			elseif key == "p" then
-				showPlotter = not showPlotter
-			elseif key == "g" then
-				graphicSettings.betterGraphics = not graphicSettings.betterGraphics
-			elseif key == "t" then
-				graphicSettings.gateUseAltBorderColor = not graphicSettings.gateUseAltBorderColor
+			if key == "s" then     saveBoard()
+			elseif key == "l" then loadBoard()
+			elseif key == "r" then resetBoard()
+			elseif key == "d" then addDefaults()
+			elseif key == "p" then showPlotter = not showPlotter
+			elseif key == "g" then graphicSettings.betterGraphics = not graphicSettings.betterGraphics
+			elseif key == "t" then graphicSettings.gateUseAltBorderColor = not graphicSettings.gateUseAltBorderColor
 			elseif key == "c" then
 				love.system.setClipboardText(json.encode({ gates=gates:all(), peripherals=peripherals:all(), connections=connections:all() }))
 				showMessage("Board Data copied to Clipboard!")
@@ -578,25 +680,45 @@ function love.keypressed(key, scancode, isrepeat)
 				love.event.quit()
 			end
 		else
-			if key == "d" then
-				showDebug = not showDebug
-			elseif key == "t" then
-				showTelemetry = not showTelemetry
+			if key == "d" then showDebug = not showDebug
+			elseif key == "t" then showTelemetry = not showTelemetry
 			elseif key == "g" then
 				addGroup()
 				selection = {x1=0, y1=0, x2=0, y2=0, ids={}}
 			end
 		end
 		if key == "delete" then
-			local groupID = getGroupIDByPos(love.mouse.getX(), love.mouse.getY())
-			if groupID then
-				removeGroupByID(groupID, love.keyboard.isDown("lshift"))
-			else
-				if getBobjects():count() > 0 then
+			if selectedPinID ~= 0 then -- First Pin of new Connection selected
+				local pin = getPinByID(selectedPinID)
+				if pin then pin.isConnected = false end
+				selectedPinID = 0
+			else  -- no Pin selected
+				local pinID = getPinIDByPos(x, y)
+				if pinID then
+					removeConnectionWithPinID(pinID)
+				else
+					-- local groupID = getGroupIDByPos(love.mouse.getX(), love.mouse.getY())
+					-- if groupID then
+					-- 	removeGroupByID(groupID, love.keyboard.isDown("lshift"))
+					-- else
+					-- 	if getBobjects():count() > 0 then
+					-- 		local bobID = getBobIDByPos(love.mouse.getX(), love.mouse.getY())
+					-- 		if bobID then
+					-- 			removeBobByID(bobID)
+					-- 		end
+					-- 	end
+					-- end
+
 					local bobID = getBobIDByPos(love.mouse.getX(), love.mouse.getY())
 					if bobID then
 						removeBobByID(bobID)
+					else
+						local groupID = getGroupIDByPos(love.mouse.getX(), love.mouse.getY())
+						if groupID then
+							removeGroupByID(groupID, love.keyboard.isDown("lshift"))
+						end
 					end
+
 				end
 			end
 		end
@@ -651,7 +773,7 @@ function love.keypressed(key, scancode, isrepeat)
 			elseif key == "2" then
 				addGate(constructOR(love.mouse.getX() - GATEgetWidth()/2, love.mouse.getY() - GATEgetHeight()/2))
 			elseif key == "3" then
-				addGate(constructNOT(love.mouse.getX() - GATEgetWidth()/2, love.mouse.getY() - GATEgetHeight()/2, 1))
+				addGate(constructNOT(love.mouse.getX() - GATEgetWidth()/2, love.mouse.getY() - GATEgetHeight()/2))
 			elseif key == "4" then
 				addGate(constructNAND(love.mouse.getX() - GATEgetWidth()/2, love.mouse.getY() - GATEgetHeight()/2))
 			elseif key == "5" then
@@ -675,10 +797,119 @@ end
 
 --==============================================[ CUSTOM FUNCTIONS ]==============================================--
 
+function any(tbl)
+	tbl.mode = 'any'
+	return tbl
+end
+
+function all(tbl)
+	tbl.mode = 'all'
+	return tbl
+end
+
+function keyPressed(key, keys, mods, others)
+	local isPressed = true
+
+	-- keys
+	if type(keys) == 'table' then
+		if keys.mode == 'any' then
+			isPressed = false
+			collect(keys):each(function(k)
+				if key == k then isPressed = true end
+			end)
+		elseif keys.mode == 'all' then
+			collect(keys):each(function(k)
+				if key ~= k then isPressed = false end
+			end)
+		end
+	else
+		isPressed = key == keys
+	end
+
+	if not isPressed then return false end
+
+	-- mods
+	if mods ~= nil then
+		if type(mods) == 'table' then
+			if collect(mods):contains('shift') then
+				isPressed = isPressed and love.keyboard.isDown('lshift') or love.keyboard.isDown('rshift')
+			else
+				isPressed = isPressed and not love.keyboard.isDown('lshift') and not love.keyboard.isDown('rshift')
+			end
+			if collect(mods):contains('ctrl') then
+				isPressed = isPressed and love.keyboard.isDown('lctrl') or love.keyboard.isDown('rctrl')
+			else
+				isPressed = isPressed and not love.keyboard.isDown('lshift') and not love.keyboard.isDown('rshift')
+			end
+			if collect(mods):contains('alt') then
+				isPressed = isPressed and love.keyboard.isDown('lalt') or love.keyboard.isDown('ralt')
+			else
+				isPressed = isPressed and not love.keyboard.isDown('lalt') and not love.keyboard.isDown('ralt')
+			end
+			if collect(mods):contains('gui') then
+				isPressed = isPressed and love.keyboard.isDown('lgui') or love.keyboard.isDown('rgui')
+			else
+				isPressed = isPressed and not love.keyboard.isDown('lgui') and not love.keyboard.isDown('rgui')
+			end
+		else
+			if mods == 'shift' then
+				isPressed = isPressed and love.keyboard.isDown('lshift') or love.keyboard.isDown('rshift')
+			else
+				isPressed = isPressed and not love.keyboard.isDown('lshift') and not love.keyboard.isDown('rshift')
+			end
+			if mods == 'ctrl' then
+				isPressed = isPressed and love.keyboard.isDown('lctrl') or love.keyboard.isDown('rctrl')
+			else
+				isPressed = isPressed and not love.keyboard.isDown('lshift') and not love.keyboard.isDown('rshift')
+			end
+			if mods == 'alt' then
+				isPressed = isPressed and love.keyboard.isDown('lalt') or love.keyboard.isDown('ralt')
+			else
+				isPressed = isPressed and not love.keyboard.isDown('lalt') and not love.keyboard.isDown('ralt')
+			end
+			if mods == 'gui' then
+				isPressed = isPressed and love.keyboard.isDown('lgui') or love.keyboard.isDown('rgui')
+			else
+				isPressed = isPressed and not love.keyboard.isDown('lgui') and not love.keyboard.isDown('rgui')
+			end
+		end
+	end
+
+	-- others like inMenu etc.
+	if others ~= nil then
+		if type(others) == 'table' then			
+			collect(others):each(function(o)
+				if not o then isPressed = false end
+			end)
+		end
+		if type(others) == 'boolean' then
+			isPressed = isPressed and others
+		end
+		print("[WARNING] keyPressed: unusable type of 'others':", others, type(others))
+	end
+
+	return isPressed
+end
+
 function showMessage(msg)
 	timeOutMessage = msg
 	timeOutTimer = 2000
 end
+
+
+function addGate(gate)
+	gates:append(gate)
+	love.thread.getChannel("addGate"):push(json.encode(gate))
+end
+function addPeripheral(peripheral)
+	peripherals:append(peripheral)
+	love.thread.getChannel("addPeripheral"):push(json.encode(peripheral))
+end
+function addConnection(con)
+	connections:append(con)
+	love.thread.getChannel("addConnection"):push(json.encode(con))
+end
+
 
 function resetBoard()
 	connections = Collection:new()
@@ -695,6 +926,7 @@ function resetBoard()
 	showPlotter = false
 	plotterID = 0
 	plotterData = {}
+	love.thread.getChannel("reset"):push(true)
 	showMessage("Board Reset...")
 end
 
@@ -709,7 +941,7 @@ function addDefaults()
 	showMessage("Default Board Loaded!")
 end
 
-function load()
+function loadBoard()
 	resetBoard()
 	contents = love.filesystem.read(string.format("board%d.json", currentBoard))
 	if contents then
@@ -724,7 +956,7 @@ function load()
 		end end
 		if data.connections then
 			for i, connection in ipairs(data.connections) do
-				connections:append(connection)
+				addConnection(connection)
 		end end
 		if data.groups then
 			for i, group in ipairs(data.groups) do
@@ -736,8 +968,16 @@ function load()
 	showMessage(string.format("Board %d Loaded!", currentBoard))
 end
 
-function save()
-	local success, message = love.filesystem.write(string.format("board%d.json", currentBoard), json.encode({ gates=gates:all(), peripherals=peripherals:all(), connections=connections:all(), groups=groups:all() }))
+function saveBoard()
+	local success, message = love.filesystem.write(
+		string.format("board%d.json", currentBoard),
+		json.encode({
+			gates=gates:all(),
+			peripherals=peripherals:all(),
+			connections=connections:all(),
+			groups=groups:all()
+		})
+	)
 	if success then showMessage(string.format("Board %d Saved!", currentBoard))
 	else showMessage(string.format("Board could not be Saved...")) end
 end
@@ -748,7 +988,8 @@ function addGroup()
 	local padding = 20
 
 	for bob in myBobjects() do
-		if collect(selection.ids):contains(bob.id) and groups:every(function(key,group) return not collect(group.ids):contains(bob.id) end) then
+		if collect(selection.ids):contains(bob.id)
+		and groups:every(function(key,group) return not collect(group.ids):contains(bob.id) end) then
 			hasBobjects = true
 			if bob.pos.x < group.x1 then
 				group.x1 = bob.pos.x
@@ -857,22 +1098,25 @@ function getBobByID(id)
 	return nil
 end
 
+function checkIfInputpinHasConnection(pin)
+	for con in myConnections() do
+		if con.inputpin.id == pin.id then
+			return true
+		end
+	end
+	return false
+end
 
 function removeConnectionWithPinID(id)
-	for con,index in myConnections() do
-		if con.inputpinID == id or con.outputpinID == id then
-			connections:forget(index)
-			
-			local inputpin = getPinByID(con.inputpinID)
-			local outputpin = getPinByID(con.outputpinID)
+	for con, index in myConnections() do
+		if con.inputpin.id == id or con.outputpin.id == id then
+			con.inputpin.isConnected = false
+			con.outputpin.isConnected = false
 
-			inputpin.isConnected = false
-			outputpin.isConnected = false
-
-			local inputpinGate = getGateByID(inputpin.parentID)
-			local inputpinPer = getPeripheralByID(inputpin.parentID)
-			local outputpinGate = getGateByID(outputpin.parentID)
-			local outputpinPer = getPeripheralByID(outputpin.parentID)
+			local inputpinGate = getGateByID(con.inputpin.parentID)
+			local inputpinPer = getPeripheralByID(con.inputpin.parentID)
+			local outputpinGate = getGateByID(con.outputpin.parentID)
+			local outputpinPer = getPeripheralByID(con.outputpin.parentID)
 
 			if inputpinGate ~= nil then
 				inputpinGate:resetPins()
@@ -892,9 +1136,11 @@ function removeConnectionWithPinID(id)
 				outputpinPer:update()
 			end
 
+			connections:forget(index)
+			connections = connections:resort()
+			updateThread()
 		end
 	end
-	connections = connections:resort()
 end
 function removeBobByID(id)
 	removeGateByID(id)
@@ -910,6 +1156,7 @@ function removeGateByID(id)
 			end
 			gates:forget(index)
 			gates = gates:resort()
+			updateThread()
 		end
 	end
 end
@@ -923,6 +1170,7 @@ function removePeripheralByID(id)
 			end
 			peripherals:forget(index)
 			peripherals = peripherals:resort()
+			updateThread()
 		end
 	end
 end
@@ -940,23 +1188,6 @@ function removeGroupByID(id, deleteBobs)
 	end
 end
 
-function checkIfInputpinHasConnection(pin)
-	for con in myConnections() do
-		if con.inputpinID == pin.id then
-			return true
-		end
-	end
-	return false
-end
-
-function addGate(gate)
-	-- history:append(gate.id)
-	gates:append(gate)
-end
-function addPeripheral(peripheral)
-	-- history:append(peripheral.id)
-	peripherals:append(peripheral)
-end
 
 function getBobjects()
 	return gates:merge(peripherals:all())
@@ -967,7 +1198,7 @@ function myConnections()
 	return function()
 		index = index + 1
 		local con = connections:get(index)
-		if con ~= nil and con.inputpinID ~= nil and con.outputpinID ~= nil then
+		if con ~= nil and con.inputpin ~= nil and con.outputpin ~= nil then
 			return con, index
 		end
 	end

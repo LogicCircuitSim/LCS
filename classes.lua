@@ -1,4 +1,4 @@
-local lume = require "lib.lume"
+local lume = require "lume"
 
 local class = {}
 function class:new(tbal)
@@ -180,7 +180,7 @@ function constructXNOR(x, y, inputpincount)
 	return XNOR:new(me)
 end
 function constructNOT(x, y, inputpincount)
-	local me = constructGATE(x, y, inputpincount)
+	local me = constructGATE(x, y, inputpincount or 1)
 	me.name = "NOT"
 	return NOT:new(me)
 end
