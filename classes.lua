@@ -1,4 +1,4 @@
-local lume = require "lib.lume"
+local lume = require "lume"
 
 local class = {}
 function class:new(tbal)
@@ -144,7 +144,7 @@ function constructGATE(x, y, inputpincount)
 	me.inputpins = Collection:new()
 	for i=1, me.inputpincount do
 		me.inputpins:append(constructINPUTPIN(me.id))
-	end	
+	end
 	me.outputpin = constructOUTPUTPIN(me.id)
 	return GATE:new(me)
 end
@@ -180,7 +180,7 @@ function constructXNOR(x, y, inputpincount)
 	return XNOR:new(me)
 end
 function constructNOT(x, y, inputpincount)
-	local me = constructGATE(x, y, inputpincount)
+	local me = constructGATE(x, y, inputpincount or 1)
 	me.name = "NOT"
 	return NOT:new(me)
 end
@@ -506,12 +506,8 @@ function XNOR:update()
 	self.outputpin.state = self.state
 end
 
-function NOT:removePin()
-	if self.inputpincount > 1 then
-		self.inputpincount = self.inputpincount - 1
-		self.inputpins:pop()
-	end
-end
+function NOT:removePin() end
+function NOT:addPin() end
 function NOT:drawMe()
 	love.graphics.setColor(1, 1, 1)
 	love.graphics.printCentered("NOT", self.pos.x + (GATEgetWidth()/2), self.pos.y + (self:getHeight()/2))
@@ -664,6 +660,14 @@ function INPUT:drawMe()
 	love.graphics.rectangle("fill", self.pos.x+pad + (self.state and PERIPHERALgetWidth()/2-pad or 0), self.pos.y+pad, PERIPHERALgetWidth()/2-pad, self:getHeight()-pad*2)
 end
 
+function OUTPUT:update()
+	self.state = self.inputpins:get(1).state
+end
+function OUTPUT:drawMe()
+	love.graphics.setColor(1, 1, 1)
+	love.graphics.printCentered(("OUT %d"):format(self.id-2000), self.pos.x + (PERIPHERALgetWidth()/2), self.pos.y + (self:getHeight()/2))
+end
+
 function CLOCK:update()
 	local now = love.timer.getTime()
 	if now - self.lastMicroSec > 1/self.tickspeed then
@@ -678,14 +682,6 @@ end
 function CLOCK:drawMe()
 	love.graphics.setColor(1, 1, 1)
 	love.graphics.printCentered(("CLOCK\n%d Hz"):format(self.tickspeed), self.pos.x + (PERIPHERALgetWidth()/2), self.pos.y + (self:getHeight()/4), 2)
-end
-
-function OUTPUT:update()
-	self.state = self.inputpins:get(1).state
-end
-function OUTPUT:drawMe()
-	love.graphics.setColor(1, 1, 1)
-	love.graphics.printCentered(("OUT %d"):format(self.id-2000), self.pos.x + (PERIPHERALgetWidth()/2), self.pos.y + (self:getHeight()/2))
 end
 
 function BUFFER:update()

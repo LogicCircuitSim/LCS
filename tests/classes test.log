@@ -1,0 +1,21 @@
+[INFO  06/03/23 17:28:47] classes_test.lua:4: require classes
+[INFO  06/03/23 17:33:58] classes_test.lua:4: require classes
+[INFO  06/03/23 17:34:30] classes_test.lua:4: require classes
+[INFO  06/03/23 17:37:54] classes_test.lua:4: add lib to package.path
+[INFO  06/03/23 17:39:02] classes_test.lua:4: add lib to package.path
+[DEBUG 06/03/23 17:39:02] classes_test.lua:6: dir of this file is  nil
+[INFO  06/03/23 17:40:18] classes_test.lua:4: add lib to package.path
+[INFO  06/03/23 17:41:05] classes_test.lua:4: add lib to package.path
+[INFO  06/03/23 17:41:46] classes_test.lua:4: add lib to package.path
+[DEBUG 06/03/23 17:41:46] classes_test.lua:6: dir of this file is  nil
+[INFO  06/03/23 17:42:07] classes_test.lua:4: add lib to package.path
+[DEBUG 06/03/23 17:42:07] classes_test.lua:6: dir of this file is nil
+[INFO  06/03/23 17:42:41] classes_test.lua:4: add lib to package.path
+[DEBUG 06/03/23 17:42:41] classes_test.lua:6: dir of this file is nil
+[INFO  06/03/23 17:42:41] classes_test.lua:10: require classes
+[INFO  06/03/23 17:43:10] classes_test.lua:4: add lib to package.path
+[DEBUG 06/03/23 17:43:10] classes_test.lua:6: dir of this file is C:\Users\noah1\Documents\Coding\LCS\tests
+[INFO  06/03/23 17:43:10] classes_test.lua:10: require classes
+[INFO  06/03/23 17:43:32] classes_test.lua:4: add lib to package.path
+[DEBUG 06/03/23 17:43:32] classes_test.lua:6: dir of this file is C:\Users\noah1\Documents\Coding\LCS\tests
+[INFO  06/03/23 17:43:32] classes_test.lua:10: require classes
