@@ -1,0 +1,159 @@
+[DEBUG 06/04/23 20:35:16] alltests.lua:6: Running classes test
+[DEBUG 06/04/23 20:35:16] classes_test.lua:7: add lib to package.path
+[DEBUG 06/04/23 20:35:16] classes_test.lua:13: Done!
+[DEBUG 06/04/23 20:35:16] classes_test.lua:17: require classes
+[DEBUG 06/04/23 20:35:16] classes_test.lua:25: Done!
+[DEBUG 06/04/23 20:35:16] classes_test.lua:29: IDs before creating objects
+[DEBUG 06/04/23 20:35:16] classes_test.lua:31: GATE: 1000
+[DEBUG 06/04/23 20:35:16] classes_test.lua:32: AND: 1000
+[DEBUG 06/04/23 20:35:16] classes_test.lua:33: OR: 1000
+[DEBUG 06/04/23 20:35:16] classes_test.lua:34: NOT: 1000
+[DEBUG 06/04/23 20:35:16] classes_test.lua:35: XOR: 1000
+[DEBUG 06/04/23 20:35:16] classes_test.lua:37: PERIPHERAL: 2000
+[DEBUG 06/04/23 20:35:16] classes_test.lua:38: INPUT: 2000
+[DEBUG 06/04/23 20:35:16] classes_test.lua:39: OUTPUT: 2000
+[DEBUG 06/04/23 20:35:16] classes_test.lua:40: CLOCK: 2000
+[DEBUG 06/04/23 20:35:16] classes_test.lua:41: BUFFER: 2000
+[DEBUG 06/04/23 20:35:16] classes_test.lua:43: Done!
+[DEBUG 06/04/23 20:35:16] classes_test.lua:47: create Gates
+[DEBUG 06/04/23 20:35:16] classes_test.lua:58: Done!
+[DEBUG 06/04/23 20:35:16] classes_test.lua:62: create Peripherals
+[DEBUG 06/04/23 20:35:16] classes_test.lua:72: Done!
+[DEBUG 06/04/23 20:35:16] classes_test.lua:76: check if Gates are not nil
+[DEBUG 06/04/23 20:35:16] classes_test.lua:99: Done!
+[DEBUG 06/04/23 20:35:16] classes_test.lua:103: check if ids are unique
+[DEBUG 06/04/23 20:35:16] classes_test.lua:105: GATE.ID = 	1002
+[DEBUG 06/04/23 20:35:16] classes_test.lua:106: gate.id = 	1001
+[DEBUG 06/04/23 20:35:16] classes_test.lua:107: gate2.id = 	1002
+[DEBUG 06/04/23 20:35:16] classes_test.lua:108: andGate.id = 	1003
+[DEBUG 06/04/23 20:35:16] classes_test.lua:109: orGate.id = 	1003
+[DEBUG 06/04/23 20:35:16] classes_test.lua:110: notGate.id = 	1003
+[DEBUG 06/04/23 20:35:16] classes_test.lua:111: xorGate.id = 	1003
+[ERROR 06/04/23 20:35:16] classes_test.lua:118: andGate.id == orGate.id
+[DEBUG 06/04/23 20:35:16] alltests.lua:8: Done running classes test
+[ERROR 06/04/23 20:35:16] alltests.lua:11: classes test failed
+[ERROR 06/04/23 20:35:16] alltests.lua:24: Done running all tests
+[ERROR 06/04/23 20:35:16] alltests.lua:25: Some tests failed
+[DEBUG 06/04/23 21:00:56] alltests.lua:6: Running classes test
+[DEBUG 06/04/23 21:00:56] classes_test.lua:7: add lib to package.path
+[DEBUG 06/04/23 21:00:56] classes_test.lua:13: Done!
+[DEBUG 06/04/23 21:00:56] classes_test.lua:17: require classes
+[DEBUG 06/04/23 21:00:56] classes_test.lua:25: Done!
+[DEBUG 06/04/23 21:00:56] classes_test.lua:29: IDs before creating objects
+[DEBUG 06/04/23 21:00:56] classes_test.lua:31: GATE: 1000
+[DEBUG 06/04/23 21:00:56] classes_test.lua:32: AND: 1000
+[DEBUG 06/04/23 21:00:56] classes_test.lua:33: OR: 1000
+[DEBUG 06/04/23 21:00:56] classes_test.lua:34: NOT: 1000
+[DEBUG 06/04/23 21:00:56] classes_test.lua:35: XOR: 1000
+[DEBUG 06/04/23 21:00:56] classes_test.lua:37: PERIPHERAL: 2000
+[DEBUG 06/04/23 21:00:56] classes_test.lua:38: INPUT: 2000
+[DEBUG 06/04/23 21:00:56] classes_test.lua:39: OUTPUT: 2000
+[DEBUG 06/04/23 21:00:56] classes_test.lua:40: CLOCK: 2000
+[DEBUG 06/04/23 21:00:56] classes_test.lua:41: BUFFER: 2000
+[DEBUG 06/04/23 21:00:56] classes_test.lua:43: Done!
+[DEBUG 06/04/23 21:00:56] classes_test.lua:47: create Gates
+[DEBUG 06/04/23 21:00:56] classes_test.lua:58: Done!
+[DEBUG 06/04/23 21:00:56] classes_test.lua:62: create Peripherals
+[DEBUG 06/04/23 21:00:56] classes_test.lua:72: Done!
+[DEBUG 06/04/23 21:00:56] classes_test.lua:76: check if Gates are not nil
+[DEBUG 06/04/23 21:00:56] classes_test.lua:99: Done!
+[DEBUG 06/04/23 21:00:56] classes_test.lua:103: check if ids are unique
+[DEBUG 06/04/23 21:00:56] classes_test.lua:105: GATE.ID = 	1008
+[DEBUG 06/04/23 21:00:56] classes_test.lua:106: gate.id = 	1001
+[DEBUG 06/04/23 21:00:56] classes_test.lua:107: gate2.id = 	1002
+[DEBUG 06/04/23 21:00:56] classes_test.lua:108: andGate.id = 	1003
+[DEBUG 06/04/23 21:00:56] classes_test.lua:109: orGate.id = 	1004
+[DEBUG 06/04/23 21:00:56] classes_test.lua:110: notGate.id = 	1005
+[DEBUG 06/04/23 21:00:56] classes_test.lua:111: xorGate.id = 	1008
+[DEBUG 06/04/23 21:00:56] classes_test.lua:122: Done!
+[DEBUG 06/04/23 21:00:56] classes_test.lua:126: static methods for Dimensions
+[DEBUG 06/04/23 21:00:56] classes_test.lua:131: Done!
+[DEBUG 06/04/23 21:00:56] classes_test.lua:135: instance methods for Dimensions
+[DEBUG 06/04/23 21:00:56] classes_test.lua:140: Done!
+[DEBUG 06/04/23 21:00:56] alltests.lua:8: Done running classes test
+[INFO  06/04/23 21:00:56] alltests.lua:13: classes test passed
+[INFO  06/04/23 21:00:56] alltests.lua:20: Done running all tests
+[INFO  06/04/23 21:00:56] alltests.lua:21: All tests passed
+[INFO  06/04/23 21:00:56] alltests.lua:22: Exiting
+[DEBUG 06/04/23 21:03:05] alltests.lua:6: Running classes test
+[DEBUG 06/04/23 21:03:05] classes_test.lua:7: add lib to package.path
+[DEBUG 06/04/23 21:03:05] classes_test.lua:13: Done!
+[DEBUG 06/04/23 21:03:05] classes_test.lua:17: require classes
+[DEBUG 06/04/23 21:03:05] classes_test.lua:25: Done!
+[DEBUG 06/04/23 21:03:05] classes_test.lua:29: IDs before creating objects
+[DEBUG 06/04/23 21:03:05] classes_test.lua:31: GATE: 1000
+[DEBUG 06/04/23 21:03:05] classes_test.lua:32: AND: 1000
+[DEBUG 06/04/23 21:03:05] classes_test.lua:33: OR: 1000
+[DEBUG 06/04/23 21:03:05] classes_test.lua:34: NOT: 1000
+[DEBUG 06/04/23 21:03:05] classes_test.lua:35: XOR: 1000
+[DEBUG 06/04/23 21:03:05] classes_test.lua:37: PERIPHERAL: 2000
+[DEBUG 06/04/23 21:03:05] classes_test.lua:38: INPUT: 2000
+[DEBUG 06/04/23 21:03:05] classes_test.lua:39: OUTPUT: 2000
+[DEBUG 06/04/23 21:03:05] classes_test.lua:40: CLOCK: 2000
+[DEBUG 06/04/23 21:03:05] classes_test.lua:41: BUFFER: 2000
+[DEBUG 06/04/23 21:03:05] classes_test.lua:43: Done!
+[DEBUG 06/04/23 21:03:05] classes_test.lua:47: create Gates
+[DEBUG 06/04/23 21:03:05] classes_test.lua:58: Done!
+[DEBUG 06/04/23 21:03:05] classes_test.lua:62: create Peripherals
+[DEBUG 06/04/23 21:03:05] classes_test.lua:72: Done!
+[DEBUG 06/04/23 21:03:05] classes_test.lua:76: check if Gates are not nil
+[DEBUG 06/04/23 21:03:05] classes_test.lua:99: Done!
+[DEBUG 06/04/23 21:03:05] classes_test.lua:103: check if ids are unique
+[DEBUG 06/04/23 21:03:05] classes_test.lua:105: GATE.ID = 	1008
+[DEBUG 06/04/23 21:03:05] classes_test.lua:106: gate.id = 	1001
+[DEBUG 06/04/23 21:03:05] classes_test.lua:107: gate2.id = 	1002
+[DEBUG 06/04/23 21:03:05] classes_test.lua:108: andGate.id = 	1003
+[DEBUG 06/04/23 21:03:05] classes_test.lua:109: orGate.id = 	1004
+[DEBUG 06/04/23 21:03:05] classes_test.lua:110: notGate.id = 	1005
+[DEBUG 06/04/23 21:03:05] classes_test.lua:111: xorGate.id = 	1008
+[DEBUG 06/04/23 21:03:05] classes_test.lua:122: Done!
+[DEBUG 06/04/23 21:03:05] classes_test.lua:126: static methods for Dimensions
+[DEBUG 06/04/23 21:03:05] classes_test.lua:131: Done!
+[DEBUG 06/04/23 21:03:05] classes_test.lua:135: instance methods for Dimensions
+[DEBUG 06/04/23 21:03:05] classes_test.lua:140: Done!
+[DEBUG 06/04/23 21:03:05] alltests.lua:8: Done running classes test
+[INFO  06/04/23 21:03:05] alltests.lua:13: classes test passed
+[INFO  06/04/23 21:03:05] alltests.lua:20: Done running all tests
+[INFO  06/04/23 21:03:05] alltests.lua:21: All tests passed
+[INFO  06/04/23 21:03:05] alltests.lua:22: Exiting
+[DEBUG 06/04/23 21:17:09] alltests.lua:6: Running classes test
+[DEBUG 06/04/23 21:17:09] classes_test.lua:7: add lib to package.path
+[DEBUG 06/04/23 21:17:09] classes_test.lua:13: Done!
+[DEBUG 06/04/23 21:17:09] classes_test.lua:17: require classes
+[DEBUG 06/04/23 21:17:09] classes_test.lua:25: Done!
+[DEBUG 06/04/23 21:17:09] classes_test.lua:29: IDs before creating objects
+[DEBUG 06/04/23 21:17:09] classes_test.lua:31: GATE: 1000
+[DEBUG 06/04/23 21:17:09] classes_test.lua:32: AND: 1000
+[DEBUG 06/04/23 21:17:09] classes_test.lua:33: OR: 1000
+[DEBUG 06/04/23 21:17:09] classes_test.lua:34: NOT: 1000
+[DEBUG 06/04/23 21:17:09] classes_test.lua:35: XOR: 1000
+[DEBUG 06/04/23 21:17:09] classes_test.lua:37: PERIPHERAL: 2000
+[DEBUG 06/04/23 21:17:09] classes_test.lua:38: INPUT: 2000
+[DEBUG 06/04/23 21:17:09] classes_test.lua:39: OUTPUT: 2000
+[DEBUG 06/04/23 21:17:09] classes_test.lua:40: CLOCK: 2000
+[DEBUG 06/04/23 21:17:09] classes_test.lua:41: BUFFER: 2000
+[DEBUG 06/04/23 21:17:09] classes_test.lua:43: Done!
+[DEBUG 06/04/23 21:17:09] classes_test.lua:47: create Gates
+[DEBUG 06/04/23 21:17:09] classes_test.lua:58: Done!
+[DEBUG 06/04/23 21:17:09] classes_test.lua:62: create Peripherals
+[DEBUG 06/04/23 21:17:09] classes_test.lua:72: Done!
+[DEBUG 06/04/23 21:17:09] classes_test.lua:76: check if Gates are not nil
+[DEBUG 06/04/23 21:17:09] classes_test.lua:99: Done!
+[DEBUG 06/04/23 21:17:09] classes_test.lua:103: check if ids are unique
+[DEBUG 06/04/23 21:17:09] classes_test.lua:105: GATE.ID = 	1008
+[DEBUG 06/04/23 21:17:09] classes_test.lua:106: gate.id = 	1001
+[DEBUG 06/04/23 21:17:09] classes_test.lua:107: gate2.id = 	1002
+[DEBUG 06/04/23 21:17:09] classes_test.lua:108: andGate.id = 	1003
+[DEBUG 06/04/23 21:17:09] classes_test.lua:109: orGate.id = 	1004
+[DEBUG 06/04/23 21:17:09] classes_test.lua:110: notGate.id = 	1005
+[DEBUG 06/04/23 21:17:09] classes_test.lua:111: xorGate.id = 	1008
+[DEBUG 06/04/23 21:17:09] classes_test.lua:122: Done!
+[DEBUG 06/04/23 21:17:09] classes_test.lua:126: static methods for Dimensions
+[DEBUG 06/04/23 21:17:09] classes_test.lua:131: Done!
+[DEBUG 06/04/23 21:17:09] classes_test.lua:135: instance methods for Dimensions
+[DEBUG 06/04/23 21:17:09] classes_test.lua:141: Done!
+[DEBUG 06/04/23 21:17:09] alltests.lua:8: Done running classes test
+[INFO  06/04/23 21:17:09] alltests.lua:13: classes test passed
+[INFO  06/04/23 21:17:09] alltests.lua:20: Done running all tests
+[INFO  06/04/23 21:17:09] alltests.lua:21: All tests passed
+[INFO  06/04/23 21:17:09] alltests.lua:22: Exiting
