@@ -78,6 +78,8 @@ function love.errorhandler(msg)
         debugslen = debugslen + 1
     end
 
+	success = love.window.setMode(800, 600, {resizable=true, vsync=true, minwidth=400, minheight=300})
+
 	local function draw()
 		if not love.graphics.isActive() then return end
 		local pos, width = 70, love.graphics.getWidth()
