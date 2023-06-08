@@ -3,6 +3,7 @@ print('\nVersion: 1.8.1')
 print('Starting...')
 local startTime = love.timer.getTime()
 local log = require 'lib.log'
+log.level = 'info'
 require 'fancyerror'
 
 log.info('Loading libraries...')
@@ -975,50 +976,54 @@ function loadBoard()
 		local data = json.decode(contents)
 		if data.gates then
 			for i, gatedata in ipairs(data.gates) do
-				addGate(classes.loadGATE(gatedata))			
-		end end
+				local success, result = pcall(classes.loadGATE, gatedata)
+				if success then addGate(result)
+				else log.error('loading Gate failed: '..tostring(result)) end
+			end
+		end
 		if data.peripherals then
 			for i, peripheraldata in ipairs(data.peripherals) do
-				addPeripheral(classes.loadPERIPHERAL(peripheraldata))
-		end end
+				local success, result = pcall(classes.loadPERIPHERAL, peripheraldata)
+				-- classes.loadPERIPHERAL(peripheraldata)
+				if success then addPeripheral(result)
+				else log.error('loading Peripheral failed: '..tostring(result)) end
+			end
+		end
 		if data.connections then
 			for i, connection in ipairs(data.connections) do
 				addConnection(connection)
-		end end
+			end
+		end
 		if data.groups then
 			for i, group in ipairs(data.groups) do
 				lume.push(groups, group)
-		end end
+			end
+		end
 	else
-		print('file not found')
+		log.warn('board file not found')
 	end
 	messages.add(string.format("Board %d Loaded!", currentBoard))
 end
 
 function saveBoard()
-	-- prinspect(gates)
-	-- prinspect(prepForSave(gates))
-
-	local success, message = love.filesystem.write(
-		string.format("board%d.json", currentBoard),
-		json.encode({
-			gates = prepForSave(gates),
-			peripherals = prepForSave(peripherals),
-			connections = prepForSave(connections),
-			groups = prepForSave(groups)
-		})
-	)
-	-- love.filesystem.write(
-	-- 	string.format("board%d.lua", currentBoard), 
-	-- 	lume.serialize({
-	-- 		gates = removeAllFunctionsFromTable(gates),
-	-- 		peripherals = removeAllFunctionsFromTable(peripherals),
-	-- 		connections = removeAllFunctionsFromTable(connections),
-	-- 		groups = removeAllFunctionsFromTable(groups)
-	-- 	})
-	-- )
+	local success, result = pcall(function()
+		local lsucc, lmessage = love.filesystem.write(
+			string.format("board%d.json", currentBoard),
+			json.encode({
+				gates = prepForSave(gates),
+				peripherals = prepForSave(peripherals),
+				connections = prepForSave(connections),
+				groups = prepForSave(groups)
+			})
+		)
+		return lmessage
+	end)
+	
 	if success then messages.add(string.format("Board %d Saved!", currentBoard))
-	else messages.add(string.format("Board could not be Saved...")) end
+	else
+		messages.add(string.format("Board could not be Saved..."))
+		log.warn('saving board failed: '..tostring(result))
+	end
 end
 
 function addGroup()
