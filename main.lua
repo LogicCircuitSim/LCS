@@ -17,6 +17,7 @@ log.info'Done.'
 
 log.info'Loading Font...'
 local font = love.graphics.newFont('fonts/main.ttf', 20)
+local namefont = love.graphics.newFont('fonts/main.ttf', 30)
 local bigfont = love.graphics.newFont('fonts/main.ttf', 80)
 local hugefont = love.graphics.newFont('fonts/main.ttf', 120)
 font:setFilter('nearest', 'nearest', 8)
@@ -64,8 +65,31 @@ local menus = {
 	list = 3,
 	board = 4
 }
-local currentMenu = menus.board
+local currentMenu = menus.list
 local menuX, menuTargetX, menuIsSliding = 0, 0, false
+
+local boardslistui = {
+	startx = 20,
+	starty = 150,
+	padding = 10,
+	spacing = 10,
+	rounding = 5,
+	colors = {
+		background = { 0.15, 0.15, 0.15 },
+		border = { 0.25, 0.25, 0.25 },
+		hover = { 0.3, 0.3, 0.3 },
+		text = { 1, 1, 1 },
+	}
+}
+
+boardslistui.createbutton = { w=font:getWidth('+ Create') + boardslistui.padding*2, h=font:getHeight() + boardslistui.padding*2, text='+ Create' }
+boardslistui.renamebutton = { w=font:getWidth('Rename')   + boardslistui.padding*2, h=font:getHeight() + boardslistui.padding*2, text='Rename'   }
+boardslistui.deletebutton = { w=font:getWidth('Delete')   + boardslistui.padding*2, h=font:getHeight() + boardslistui.padding*2, text='Delete'   }
+-- boardslistui.boarditempreset = { x=100, y=0, padw=0, padh=0, name='NAME', id=0, filesize=0, lastmodified=0, created=0 }
+boardslistui.boarditemheight = namefont:getHeight() + boardslistui.padding*2
+
+boardslist = {}
+
 local telemetryInterval, telemetryIntervalLast = 500, love.timer.getTime()
 local telemetry, telemetryShow = {}, {}
 local maxFPSRecorded = 60
@@ -121,6 +145,9 @@ function love.load()
 
 	-- loadBoard()
 	addDefaults()
+
+	lume.push(boardslist, { name='Board 1', id=1, filesize=0, lastmodified=0, created=0 })
+	lume.push(boardslist, { name='Board 2', id=2, filesize=0, lastmodified=0, created=0 })
 
 	-- local done = love.thread.getChannel("setup"):supply(true)
 	log.info('Done.')
@@ -178,51 +205,61 @@ end
 -- #                           LOVE DRAW                           #
 -- #################################################################
 function love.draw()
-	-- draw menus
-	-- love.graphics.setColor(1, 1, 1)
-	-- love.graphics.rectangle('line', 1500, 400, love.graphics.getWidth(), love.graphics.getHeight())
-	-- love.graphics.push()
-	-- love.graphics.translate(1500, 400)
-	-- love.graphics.scale(0.3)
-
 	love.graphics.push('transform')
 	love.graphics.applyTransform(menuTransform)
 	-- ##############################[  ABOUT  ]##############################
 	if shouldShowMenu(menus.about) then
 		love.graphics.print("About", bigfont, 10, 10)
 	end
+
 	love.graphics.translate(love.graphics.getWidth(), 0)
 	-- ##############################[  SETTINGS  ]##############################
 	if shouldShowMenu(menus.settings) then
 		love.graphics.print("Settings", bigfont, 10, 10)
 	end
-		love.graphics.translate(love.graphics.getWidth(), 0)	
+
+	love.graphics.translate(love.graphics.getWidth(), 0)	
 	-- ##############################[  TITLE  ]##############################
 		if shouldShowMenu(menus.title) then
 		love.graphics.print('L.C.S.', hugefont, 10, 10)
 	end
-		love.graphics.translate(love.graphics.getWidth(), 0)
+
+	love.graphics.translate(love.graphics.getWidth(), 0)
 	-- ##############################[  BOARDS LIST  ]##############################
 	if shouldShowMenu(menus.list) then
 		love.graphics.setColor(1, 1, 1)
-		love.graphics.print("Menu", bigfont, 10, 10)
-		love.graphics.print("Boards:", 20, 150)
-		local ystart = 160
-		for i=1, 10 do
-			if love.mouse.getX() > 20 and love.mouse.getX() < 20 + 100 and love.mouse.getY() > 80 + i*30 + ystart and love.mouse.getY() < 80 + i*30 + 30 + ystart then
-				love.graphics.setColor(0.2, 0.4, 1)
-				if love.mouse.isDown(1) then
-					currentBoard = i
-					loadBoard()
-					inMenu = false
-				end
-			else
-				love.graphics.setColor(1, 1, 1)
-			end
-			love.graphics.print("Board "..i, 20, 80 + i*30 + ystart)
+		love.graphics.print("Boards:", bigfont, 10, 10)
+		
+		local create = boardslistui.createbutton
+		love.graphics.setColor(boardslistui.colors.background)
+		love.graphics.rectangle("fill", boardslistui.startx, boardslistui.starty, create.w, create.h, boardslistui.rounding)
+		love.graphics.setColor(boardslistui.colors.border)
+		love.graphics.rectangle("line", boardslistui.startx, boardslistui.starty, create.w, create.h, boardslistui.rounding)
+		love.graphics.setColor(boardslistui.colors.text)
+		love.graphics.print(create.text, boardslistui.startx + boardslistui.padding, boardslistui.starty + boardslistui.padding)
+
+		
+		local w = love.graphics.getWidth() - boardslistui.startx - boardslistui.padding
+		local h = namefont:getHeight() + font:getHeight() + boardslistui.padding*3
+		for i,board in ipairs(boardslist) do
+			local x = boardslistui.startx
+			local y = boardslistui.starty + boardslistui.createbutton.h + boardslistui.spacing + ((i-1) * (h + boardslistui.spacing))
+			local rounding = boardslistui.rounding
+			local padding = boardslistui.padding
+			local text = board.name
+			local selected = board.selected
+
+			love.graphics.setColor(boardslistui.colors.background)
+			love.graphics.rectangle("fill", x, y, w, h, rounding)
+			love.graphics.setColor(boardslistui.colors.border)
+			love.graphics.rectangle("line", x, y, w, h, rounding)
+			love.graphics.setColor(boardslistui.colors.text)
+			love.graphics.print(text, namefont, x + padding, y + padding)
+			love.graphics.print('ID: #1   Size: 5KB   Last Modified: XX.XX.XX   Created: XX.XX.XX', x + padding, y+padding + namefont:getHeight()+padding)
 		end
 	end
-		love.graphics.translate(love.graphics.getWidth(), 0)
+
+	love.graphics.translate(love.graphics.getWidth(), 0)
 	-- ##############################[  BOARD  ]##############################
 	if shouldShowMenu(menus.board) then
 		-- camera
