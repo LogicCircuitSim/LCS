@@ -1,4 +1,4 @@
-local lume = require "lume"
+local lume = require "lib.lume"
 local messages = {}
 messages.version = "0.1.1"
 messages.list = {}

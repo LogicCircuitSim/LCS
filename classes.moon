@@ -24,8 +24,8 @@
 --     else
 --         math.sqrt((x1-x2)^2 + (y1-y2)^2)
 
-lume = require "lume"
-log = require "log"
+lume = require "lib.lume"
+log = require "lib.log"
 log.level = "debug"
 
 printCentered = (text, x, y, rows=1) ->
@@ -292,6 +292,7 @@ class PERIPHERAL extends BOARDOBJECT
 class AND extends GATE
     new: (x,y,inputpincount) =>
         super x,y,inputpincount
+        @name = "AND"
         log.trace'new AND'
 
     drawMe: =>
@@ -308,6 +309,7 @@ class AND extends GATE
 class OR extends GATE
     new: (x,y,inputpincount) =>
         super x,y,inputpincount
+        @name = "OR"
         log.trace'new OR'
 
     drawMe: =>
@@ -325,6 +327,7 @@ class OR extends GATE
 class NAND extends GATE
     new: (x,y,inputpincount) =>
         super x,y,inputpincount
+        @name = "NAND"
         log.trace'new NAND'
 
     drawMe: =>
@@ -342,6 +345,7 @@ class NAND extends GATE
 class NOR extends GATE
     new: (x,y,inputpincount) =>
         super x,y,inputpincount
+        @name = "NOR"
         log.trace'new NOR'
 
     drawMe: =>
@@ -359,6 +363,7 @@ class NOR extends GATE
 class XOR extends GATE
     new: (x,y,inputpincount) =>
         super x,y,inputpincount
+        @name = "XOR"
         log.trace'new XOR'
 
     drawMe: =>
@@ -376,6 +381,7 @@ class XOR extends GATE
 class XNOR extends GATE
     new: (x,y,inputpincount) =>
         super x,y,inputpincount
+        @name = "XNOR"
         log.trace'new XNOR'
 
     drawMe: =>
@@ -393,6 +399,7 @@ class XNOR extends GATE
 class NOT extends GATE
     new: (x,y,inputpincount=1) =>
         super x,y,inputpincount
+        @name = "NOT"
         log.trace'new NOT'
 
     drawMe: =>
@@ -412,6 +419,7 @@ class NOT extends GATE
 class INPUT extends PERIPHERAL
     new: (x,y) =>
         super x,y,0,1
+        @name = "INPUT"
         log.trace'new INPUT'
 
     update: =>
@@ -426,6 +434,7 @@ class INPUT extends PERIPHERAL
 class OUTPUT extends PERIPHERAL
     new: (x,y) =>
         super x,y,1,0
+        @name = "OUTPUT"
         log.trace'new OUTPUT'
 
     update: =>
@@ -439,6 +448,7 @@ class OUTPUT extends PERIPHERAL
 class BUFFER extends PERIPHERAL
     new: (x,y) =>
         super x,y,1,1
+        @name = "BUFFER"
         log.trace'new BUFFER'
         @ticks = 5
         @tickcount = 0
@@ -468,6 +478,7 @@ class BUFFER extends PERIPHERAL
 class CLOCK extends PERIPHERAL
     new: (x,y) =>
         super x,y,0,1
+        @name = "CLOCK"
         log.trace'new CLOCK'
         @tickspeed = 1 -- ticks per second
         @ticks = 1/@tickspeed
@@ -515,7 +526,7 @@ loadGATE = (gatedata) ->
 	elseif gatedata.name == "XOR" newgate = XOR(gatedata.pos.x, gatedata.pos.y, gatedata.inputpincount)
 	elseif gatedata.name == "XNOR" newgate = XNOR(gatedata.pos.x, gatedata.pos.y, gatedata.inputpincount)
 	elseif gatedata.name == "NOT" newgate = NOT(gatedata.pos.x, gatedata.pos.y, gatedata.inputpincount)
-    else print("ERROR: Unknown gate type: " .. gatedata.name)
+    else log.warn("Unknown gate type: " .. tostring(gatedata.name))
     newgate.id = gatedata.id
     newgate.state = gatedata.state
     newgate.inputpincount = gatedata.inputpincount
@@ -537,7 +548,7 @@ loadPERIPHERAL = (peripheraldata) ->
 		peripheraldata.isBuffering = false
 		newperipheral = BUFFER(peripheraldata.pos.x, peripheraldata.pos.y, peripheraldata.inputpincount)
 	elseif peripheraldata.name == "OUTPUT" then newperipheral = OUTPUT(peripheraldata.pos.x, peripheraldata.pos.y, peripheraldata.inputpincount)
-    else print("ERROR: Unknown peripheral type: " .. peripheraldata.name)
+    else log.warn("Unknown peripheral type: " .. tostring(peripheraldata.name))
     newperipheral.id = peripheraldata.id
     newperipheral.state = peripheraldata.state
     newperipheral.inputpin = loadINPUTPIN(peripheraldata.inputpins)

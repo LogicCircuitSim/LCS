@@ -4,6 +4,13 @@
     "version": "2.0.0",
     "tasks": [
         {
+            "label": "Run LOVE",
+            "type": "shell",
+            "command": "love .",
+            "problemMatcher": [
+            ]
+        },
+        {
             "label": "compile moon",
             "type": "shell",
             "command": "wsl moonc classes.moon",

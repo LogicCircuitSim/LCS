@@ -1,5 +1,5 @@
-local lume = require("lume")
-local log = require("log")
+local lume = require("lib.lume")
+local log = require("lib.log")
 log.level = "debug"
 local printCentered
 printCentered = function(text, x, y, rows)
@@ -580,6 +580,7 @@ do
   _class_0 = setmetatable({
     __init = function(self, x, y, inputpincount)
       _class_0.__parent.__init(self, x, y, inputpincount)
+      self.name = "AND"
       return log.trace('new AND')
     end,
     __base = _base_0,
@@ -634,6 +635,7 @@ do
   _class_0 = setmetatable({
     __init = function(self, x, y, inputpincount)
       _class_0.__parent.__init(self, x, y, inputpincount)
+      self.name = "OR"
       return log.trace('new OR')
     end,
     __base = _base_0,
@@ -688,6 +690,7 @@ do
   _class_0 = setmetatable({
     __init = function(self, x, y, inputpincount)
       _class_0.__parent.__init(self, x, y, inputpincount)
+      self.name = "NAND"
       return log.trace('new NAND')
     end,
     __base = _base_0,
@@ -742,6 +745,7 @@ do
   _class_0 = setmetatable({
     __init = function(self, x, y, inputpincount)
       _class_0.__parent.__init(self, x, y, inputpincount)
+      self.name = "NOR"
       return log.trace('new NOR')
     end,
     __base = _base_0,
@@ -796,6 +800,7 @@ do
   _class_0 = setmetatable({
     __init = function(self, x, y, inputpincount)
       _class_0.__parent.__init(self, x, y, inputpincount)
+      self.name = "XOR"
       return log.trace('new XOR')
     end,
     __base = _base_0,
@@ -850,6 +855,7 @@ do
   _class_0 = setmetatable({
     __init = function(self, x, y, inputpincount)
       _class_0.__parent.__init(self, x, y, inputpincount)
+      self.name = "XNOR"
       return log.trace('new XNOR')
     end,
     __base = _base_0,
@@ -903,6 +909,7 @@ do
         inputpincount = 1
       end
       _class_0.__parent.__init(self, x, y, inputpincount)
+      self.name = "NOT"
       return log.trace('new NOT')
     end,
     __base = _base_0,
@@ -951,6 +958,7 @@ do
   _class_0 = setmetatable({
     __init = function(self, x, y)
       _class_0.__parent.__init(self, x, y, 0, 1)
+      self.name = "INPUT"
       return log.trace('new INPUT')
     end,
     __base = _base_0,
@@ -998,6 +1006,7 @@ do
   _class_0 = setmetatable({
     __init = function(self, x, y)
       _class_0.__parent.__init(self, x, y, 1, 0)
+      self.name = "OUTPUT"
       return log.trace('new OUTPUT')
     end,
     __base = _base_0,
@@ -1061,6 +1070,7 @@ do
   _class_0 = setmetatable({
     __init = function(self, x, y)
       _class_0.__parent.__init(self, x, y, 1, 1)
+      self.name = "BUFFER"
       log.trace('new BUFFER')
       self.ticks = 5
       self.tickcount = 0
@@ -1119,6 +1129,7 @@ do
   _class_0 = setmetatable({
     __init = function(self, x, y)
       _class_0.__parent.__init(self, x, y, 0, 1)
+      self.name = "CLOCK"
       log.trace('new CLOCK')
       self.tickspeed = 1
       self.ticks = 1 / self.tickspeed
@@ -1187,7 +1198,7 @@ loadGATE = function(gatedata)
   elseif gatedata.name == "NOT" then
     newgate = NOT(gatedata.pos.x, gatedata.pos.y, gatedata.inputpincount)
   else
-    print("ERROR: Unknown gate type: " .. gatedata.name)
+    log.warn("Unknown gate type: " .. tostring(gatedata.name))
   end
   newgate.id = gatedata.id
   newgate.state = gatedata.state
@@ -1218,7 +1229,7 @@ loadPERIPHERAL = function(peripheraldata)
   elseif peripheraldata.name == "OUTPUT" then
     newperipheral = OUTPUT(peripheraldata.pos.x, peripheraldata.pos.y, peripheraldata.inputpincount)
   else
-    print("ERROR: Unknown peripheral type: " .. peripheraldata.name)
+    log.warn("Unknown peripheral type: " .. tostring(peripheraldata.name))
   end
   newperipheral.id = peripheraldata.id
   newperipheral.state = peripheraldata.state

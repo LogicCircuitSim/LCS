@@ -1,4 +1,4 @@
-local lume = require "lume"
+local lume = require "lib.lume"
 local g = love.graphics
 local lm = love.mouse
 local Camera = {}
@@ -203,9 +203,9 @@ function Camera.newSmoothWithTransform(transformObj, speed, minZoom, maxZoom)
 
 	function self:update(dt, cubic)
 		if cubic then
-			x = lume.smooth(x, tx, speed*dt)
-			y = lume.smooth(y, ty, speed*dt)
-			scale = lume.smooth(scale, ts, speed*dt)
+			x = lume.slerp(x, tx, speed*dt)
+			y = lume.slerp(y, ty, speed*dt)
+			scale = lume.slerp(scale, ts, speed*dt)
 		else
 			x = lume.lerp(x, tx, (speed*0.3)*dt)
 			y = lume.lerp(y, ty, (speed*0.3)*dt)
