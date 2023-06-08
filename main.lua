@@ -694,7 +694,6 @@ function saveKeyPressed(key, scancode, isrepeat)
 	whenKeyPressed(key, 'f11', nil, nil, function()
 		settings.fullscreen = not settings.fullscreen
 		love.window.setFullscreen(settings.fullscreen, "exclusive")
-		messages.add("Toggled Fullscreen to: "..tostring(settings.fullscreen))
 	end)
 
 	whenKeyPressed(key, 'f9', nil, nil, function()
@@ -708,7 +707,7 @@ function saveKeyPressed(key, scancode, isrepeat)
 					groups = {}
 				}))
 		end
-		messages.add("Wiped Board Save Files")
+		messages.add({{0.9, 0.55, 0.66}, "Wiped Board Save Files"})
 	end)
 
 	-- BOARD MENU
@@ -738,7 +737,7 @@ function saveKeyPressed(key, scancode, isrepeat)
 				connections = prepForSave(connections),
 				groups = prepForSave(groups)
 			}))
-		messages.add("Board Data copied to Clipboard!")
+		messages.add({{0.6, 0.89, 0.63},"Board Data copied to Clipboard!"})
 	end)
 	whenKeyPressed(key, 'v', 'ctrl', currentMenu==menus.board, function()
 		local text = love.system.getClipboardText()
@@ -767,7 +766,7 @@ function saveKeyPressed(key, scancode, isrepeat)
 							lume.push(groups, group)
 						end
 					end
-					messages.add("Board Data loaded from Clipboard!")
+					messages.add({{0.6, 0.89, 0.63},"Board Data loaded from Clipboard!"})
 				end
 			end
 		end
@@ -780,7 +779,7 @@ function saveKeyPressed(key, scancode, isrepeat)
 	whenKeyPressed(key, 'g', nil, currentMenu==menus.board, function()
 		addGroup()
 		selection = {x1=0, y1=0, x2=0, y2=0, ids={}}
-		messages.add("Group created!")
+		messages.add({{0.71, 0.75, 0.86},"Group created!"})
 	end)
 
 	whenKeyPressed(key, 'delete', nil, currentMenu==menus.board, function()
@@ -831,7 +830,7 @@ end
 
 function devKeyPressed(key, scancode, isrepeat)
 	-- ANY MENU
-	if keyPressed(key, 'escape') then
+	if checkKeyPressed(key, 'escape') then
 		if currentMenu>menus.title then currentMenu=currentMenu-1
 		elseif currentMenu<menus.title then currentMenu=currentMenu+1
 		end
@@ -844,13 +843,12 @@ function devKeyPressed(key, scancode, isrepeat)
 		currentMenu=currentMenu+1
 	end
 	
-	if keyPressed(key, 'f11') then
+	if checkKeyPressed(key, 'f11') then
 		settings.fullscreen = not settings.fullscreen
 		love.window.setFullscreen(settings.fullscreen, "exclusive")
-		messages.add("Toggled Fullscreen to: "..tostring(settings.fullscreen))
 	end
 
-	if keyPressed(key, 'f9') then
+	if checkKeyPressed(key, 'f9') then
 		for i=1,10 do 
 			love.filesystem.write(
 				string.format("board%d.json", i),
@@ -862,32 +860,35 @@ function devKeyPressed(key, scancode, isrepeat)
 				})
 			)
 		end
-		messages.add("Wiped Board Save Files")
+		messages.add({{0.9, 0.55, 0.66}, "Wiped Board Save Files"})
 	end
 	
 
 	-- BOARD MENU
 	local mx,my = camera:getScreenPos(love.mouse.getPosition())
-	if keyPressed(key, 'f1', nil, currentMenu==menus.board) then settings.showHelp = not settings.showHelp end
-	if keyPressed(key, 'f2', nil, currentMenu==menus.board) then settings.showDebug = not settings.showDebug end
-	if keyPressed(key, 'f3', nil, currentMenu==menus.board) then settings.showFPS = not settings.showFPS end
-	if keyPressed(key, 'f4', nil, currentMenu==menus.board) then settings.showGrid = not settings.showGrid end
+	if checkKeyPressed(key, 'f1', 'none', currentMenu==menus.board) then settings.showHelp = not settings.showHelp end
+	if checkKeyPressed(key, 'f2', 'none', currentMenu==menus.board) then settings.showDebug = not settings.showDebug end
+	if checkKeyPressed(key, 'f3', 'none', currentMenu==menus.board) then settings.showFPS = not settings.showFPS end
+	if checkKeyPressed(key, 'f4', 'none', currentMenu==menus.board) then settings.showGrid = not settings.showGrid end
 
-	if keyPressed(key, 'i', nil, currentMenu==menus.board) then settings.useSmoothCubic = not settings.useSmoothCubic; messages.add('Use Smooth Cubic: '..tostring(settings.useSmoothCubic)) end
-
-	if keyPressed(key, 's', 'ctrl', currentMenu==menus.board) then saveBoard() end
-	if keyPressed(key, 'l', 'ctrl', currentMenu==menus.board) then loadBoard() end
-	if keyPressed(key, 'r', 'ctrl', currentMenu==menus.board) then resetBoard() end
-	if keyPressed(key, 'd', 'ctrl', currentMenu==menus.board) then addDefaults() end
-
-	if keyPressed(key, 'p', 'ctrl', currentMenu==menus.board) then settings.showPlotter = not settings.showPlotter end
-	if keyPressed(key, 'g', 'ctrl', currentMenu==menus.board) then graphicSettings.betterGraphics = not graphicSettings.betterGraphics; messages.add('Use Better Graphics: '..tostring(settings.useSmoothCubic)) end
-
-	if keyPressed(key, 'c', 'ctrl', currentMenu==menus.board) then -- HERE update to save groups too
-		love.system.setClipboardText(json.encode({ gates=gates, peripherals=peripherals, connections=connections }))
-		messages.add("Board Data copied to Clipboard!")
+	if checkKeyPressed(key, 'i', 'none', currentMenu==menus.board) then
+		settings.useSmoothCubic = not settings.useSmoothCubic
+		messages.add('Use Smooth Cubic: '..tostring(settings.useSmoothCubic))
 	end
-	if keyPressed(key, 'v', 'ctrl', currentMenu==menus.board) then
+
+	if checkKeyPressed(key, 's', 'ctrl', currentMenu==menus.board) then saveBoard() end
+	if checkKeyPressed(key, 'l', 'ctrl', currentMenu==menus.board) then loadBoard() end
+	if checkKeyPressed(key, 'r', 'ctrl', currentMenu==menus.board) then resetBoard() end
+	if checkKeyPressed(key, 'd', 'ctrl', currentMenu==menus.board) then addDefaults() end
+
+	if checkKeyPressed(key, 'p', 'ctrl', currentMenu==menus.board) then settings.showPlotter = not settings.showPlotter end
+	if checkKeyPressed(key, 'g', 'ctrl', currentMenu==menus.board) then graphicSettings.betterGraphics = not graphicSettings.betterGraphics; messages.add('Use Better Graphics: '..tostring(settings.useSmoothCubic)) end
+
+	if checkKeyPressed(key, 'c', 'ctrl', currentMenu==menus.board) then -- HERE update to save groups too
+		love.system.setClipboardText(json.encode({ gates=gates, peripherals=peripherals, connections=connections }))
+		messages.add({{0.6, 0.89, 0.63},"Board Data copied to Clipboard!"})
+	end
+	if checkKeyPressed(key, 'v', 'ctrl', currentMenu==menus.board) then
 		local text = love.system.getClipboardText()
 		if text then
 			if text:match("gates") and text:match("peripherals") and text:match("connections") then
@@ -903,21 +904,21 @@ function devKeyPressed(key, scancode, isrepeat)
 					for i, connection in ipairs(data.connections) do
 						lume.push(connections, connection)
 					end
-					messages.add("Board Data loaded from Clipboard!")
+					messages.add({{0.6, 0.89, 0.63},"Board Data loaded from Clipboard!"})
 				end
 			end
 		end
 	end
 
-	if keyPressed(key, 'q', 'ctrl', currentMenu==menus.board) then love.event.quit() end
+	if checkKeyPressed(key, 'q', 'ctrl', currentMenu==menus.board) then love.event.quit() end
 
-	if keyPressed(key, 'g', nil, currentMenu==menus.board) then
+	if checkKeyPressed(key, 'g', 'none', currentMenu==menus.board) then
 		addGroup()
 		selection = {x1=0, y1=0, x2=0, y2=0, ids={}}
-		messages.add("Group created!")
+		messages.add({{0.71, 0.75, 0.86},"Group created!"})
 	end
 
-	if keyPressed(key, 'delete', nil, currentMenu==menus.board) then
+	if checkKeyPressed(key, 'delete', 'none', currentMenu==menus.board) then
 		if selectedPinID ~= 0 then -- First Pin of new Connection selected
 			local pin = getPinByID(selectedPinID)
 			if pin then pin.isConnected = false end
@@ -935,31 +936,31 @@ function devKeyPressed(key, scancode, isrepeat)
 		end
 	end
 
-	if keyPressed(key, 'delete', 'shift', currentMenu==menus.board) then
+	if checkKeyPressed(key, 'delete', 'shift', currentMenu==menus.board) then
 		local groupID = getGroupIDByPos(mx, my)
 		if groupID then
 			removeGroupByID(groupID, love.keyboard.isDown("lalt"))
 		end
 	end
 
-	if keyPressed(key, any{'1','2','3','4','5','6','7','8','9'}, 'alt', currentMenu==menus.board) then
+	if checkKeyPressed(key, any{'1','2','3','4','5','6','7','8','9'}, 'alt', currentMenu==menus.board) then
 		saveBoard()
 		currentBoard = tonumber(key)
 		loadBoard()
 	end
 
-	if keyPressed(key, '1', nil, currentMenu==menus.board) then addPeripheral(classes.INPUT (mx - classes.PERIPHERAL:getWidth()/2, my - classes.PERIPHERAL:getHeight()/2)) end
-	if keyPressed(key, '2', nil, currentMenu==menus.board) then addPeripheral(classes.OUTPUT(mx - classes.PERIPHERAL:getWidth()/2, my - classes.PERIPHERAL:getHeight()/2)) end
-	if keyPressed(key, '3', nil, currentMenu==menus.board) then addPeripheral(classes.CLOCK (mx - classes.PERIPHERAL:getWidth()/2, my - classes.PERIPHERAL:getHeight()/2)) end
-	if keyPressed(key, '4', nil, currentMenu==menus.board) then addPeripheral(classes.BUFFER(mx - classes.PERIPHERAL:getWidth()/2, my - classes.PERIPHERAL:getHeight()/2)) end
-	if keyPressed(key, '5', nil, currentMenu==menus.board) then addGate(classes.AND (mx - classes.GATE:getWidth()/2, my - classes.GATE:getHeight(2)/2)) end
-	if keyPressed(key, '6', nil, currentMenu==menus.board) then addGate(classes.OR  (mx - classes.GATE:getWidth()/2, my - classes.GATE:getHeight(2)/2)) end
-	if keyPressed(key, '7', nil, currentMenu==menus.board) then addGate(classes.NOT (mx - classes.GATE:getWidth()/2, my - classes.GATE:getHeight(1)/2)) end
+	if checkKeyPressed(key, '1', 'none', currentMenu==menus.board) then addPeripheral(classes.INPUT (mx - classes.PERIPHERAL:getWidth()/2, my - classes.PERIPHERAL:getHeight()/2)) end
+	if checkKeyPressed(key, '2', 'none', currentMenu==menus.board) then addPeripheral(classes.OUTPUT(mx - classes.PERIPHERAL:getWidth()/2, my - classes.PERIPHERAL:getHeight()/2)) end
+	if checkKeyPressed(key, '3', 'none', currentMenu==menus.board) then addPeripheral(classes.CLOCK (mx - classes.PERIPHERAL:getWidth()/2, my - classes.PERIPHERAL:getHeight()/2)) end
+	if checkKeyPressed(key, '4', 'none', currentMenu==menus.board) then addPeripheral(classes.BUFFER(mx - classes.PERIPHERAL:getWidth()/2, my - classes.PERIPHERAL:getHeight()/2)) end
+	if checkKeyPressed(key, '5', 'none', currentMenu==menus.board) then addGate(classes.AND (mx - classes.GATE:getWidth()/2, my - classes.GATE:getHeight(2)/2)) end
+	if checkKeyPressed(key, '6', 'none', currentMenu==menus.board) then addGate(classes.OR  (mx - classes.GATE:getWidth()/2, my - classes.GATE:getHeight(2)/2)) end
+	if checkKeyPressed(key, '7', 'none', currentMenu==menus.board) then addGate(classes.NOT (mx - classes.GATE:getWidth()/2, my - classes.GATE:getHeight(1)/2)) end
 
-	if keyPressed(key, '0', nil, currentMenu==menus.board) then camera:reset() end
-	if keyPressed(key, 'space', nil, currentMenu==menus.board) then camera:center() end
+	if checkKeyPressed(key, '0', 'none', currentMenu==menus.board) then camera:reset() end
+	if checkKeyPressed(key, 'space', 'none', currentMenu==menus.board) then camera:center() end
 
-	if keyPressed(key, 'f') then
+	if checkKeyPressed(key, 'f') then
 		-- print(classes.GATE(0,0))
 		-- print(classes.GATE(0,0).__class)
 		-- print(classes.GATE(0,0).__name)
@@ -997,6 +998,79 @@ end
 function all(tbl)
 	tbl.mode = 'all'
 	return tbl
+end
+
+function checkKeyPressed(key, keysToCompare, modifiers, additionalConditions)
+    -- Check if the key matches any of the keys to compare
+    local function keyMatches(pressedKey)
+        if type(keysToCompare) == "string" then
+            return pressedKey == keysToCompare
+        elseif type(keysToCompare) == "table" then
+            if keysToCompare.mode and keysToCompare.mode == "any" then
+                for _, k in ipairs(keysToCompare) do
+                    if k == pressedKey then
+                        return true
+                    end
+                end
+                return false
+            else
+                for _, k in ipairs(keysToCompare) do
+                    if k ~= pressedKey then
+                        return false
+                    end
+                end
+                return true
+            end
+        end
+        return false
+    end
+
+    -- Check if the modifier matches the key
+    local function modifierMatches(modifier)
+        if modifier == "ignore" then
+            return true
+        elseif modifier == "none" then
+            return not love.keyboard.isDown("lshift", "rshift", "lctrl", "rctrl", "lalt", "ralt")
+        elseif type(modifier) == "string" then
+            if modifier == "shift" then
+                return love.keyboard.isDown("lshift", "rshift")
+            elseif modifier == "ctrl" then
+                return love.keyboard.isDown("lctrl", "rctrl")
+            elseif modifier == "alt" then
+                return love.keyboard.isDown("lalt", "ralt")
+            end
+        else
+            return not love.keyboard.isDown("lshift", "rshift", "lctrl", "rctrl", "lalt", "ralt")
+        end
+        return false
+    end      
+
+    -- Check if additional conditions are met
+    local function additionalConditionsMet()
+        if type(additionalConditions) == "boolean" then
+            return additionalConditions
+        elseif type(additionalConditions) == "table" then
+            if additionalConditions.mode and additionalConditions.mode == "any" then
+                for _, condition in ipairs(additionalConditions) do
+                    if not condition then
+                        return false
+                    end
+                end
+                return true
+            else
+                for _, condition in ipairs(additionalConditions) do
+                    if condition then
+                        return false
+                    end
+                end
+                return true
+            end
+        end
+        return true
+    end
+
+    -- Main logic
+    return keyMatches(key) and modifierMatches(modifiers) and additionalConditionsMet()
 end
 
 function keyPressed(key, keys, mods, others)
@@ -1084,7 +1158,7 @@ function keyPressed(key, keys, mods, others)
 end
 
 function whenKeyPressed(key, keys, mods, others, func)
-	if keyPressed(key, keys, mods, others) then
+	if checkKeyPressed(key, keys, mods, others) then
 		local success, result = pcall(func)
 		if not success then
 			log.error('whenKeyPressed for key ['..tostring(keys)..']: '..result)
@@ -1159,7 +1233,7 @@ function resetBoard()
 	plotterID = 0
 	plotterData = {}
 	-- love.thread.getChannel("reset"):push(true)
-	messages.add("Board Reset...")
+	messages.add({{0.93, 0.7, 0.53},"Board Reset..."})
 end
 
 function addDefaults()
@@ -1170,7 +1244,7 @@ function addDefaults()
 	addPeripheral(classes.INPUT(200, 500))
 	addPeripheral(classes.CLOCK(400, 500))
 	addPeripheral(classes.OUTPUT(600, 500))
-	messages.add("Default Board Loaded!")
+	messages.add({{0.6, 0.89, 0.63},"Default Board Loaded!"})
 end
 
 function loadBoard()
@@ -1199,7 +1273,6 @@ function loadBoard()
 					lume.push(groups, group)
 				end
 			end
-			messages.add(string.format("Board %d Loaded!", currentBoard))
 		else
 			log.warn('board file not found')
 		end
@@ -1210,11 +1283,11 @@ function loadBoard()
 		if not success then
 			log.error('loading board failed: '..tostring(result))
 		else
-			messages.add(string.format("Board %d Loaded!", currentBoard))
+			messages.add({{0.6, 0.89, 0.63},string.format("Board %d Loaded!", currentBoard)})
 		end
 	else
-		loadfunc()
-		messages.add(string.format("Board %d Loaded!", currentBoard))
+		loadingfunc()
+		messages.add({{0.6, 0.89, 0.63},string.format("Board %d Loaded!", currentBoard)})
 	end
 end
 
@@ -1237,11 +1310,11 @@ function saveBoard()
 		if not success then
 			log.error('saving board failed: '..tostring(result))
 		else
-			messages.add(string.format("Board %d Saved!", currentBoard))
+			messages.add({{0.6, 0.89, 0.63},string.format("Board %d Saved!", currentBoard)})
 		end
 	else
 		savefunc()
-		messages.add(string.format("Board %d Saved!", currentBoard))
+		messages.add({{0.6, 0.89, 0.63},string.format("Board %d Saved!", currentBoard)})
 	end
 end
 
