@@ -551,8 +551,10 @@ loadPERIPHERAL = (peripheraldata) ->
     else log.warn("Unknown peripheral type: " .. tostring(peripheraldata.name))
     newperipheral.id = peripheraldata.id
     newperipheral.state = peripheraldata.state
-    newperipheral.inputpin = loadINPUTPIN(peripheraldata.inputpins)
-    newperipheral.outputpin = loadOUTPUTPIN(peripheraldata.outputpin)
+    if peripheraldata.hasinputpin then
+        newperipheral.inputpin = loadINPUTPIN(peripheraldata.inputpin)
+    if peripheraldata.hasoutputpin then
+        newperipheral.outputpin = loadOUTPUTPIN(peripheraldata.outputpin)
     newperipheral
 
 {

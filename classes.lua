@@ -1233,8 +1233,12 @@ loadPERIPHERAL = function(peripheraldata)
   end
   newperipheral.id = peripheraldata.id
   newperipheral.state = peripheraldata.state
-  newperipheral.inputpin = loadINPUTPIN(peripheraldata.inputpins)
-  newperipheral.outputpin = loadOUTPUTPIN(peripheraldata.outputpin)
+  if peripheraldata.hasinputpin then
+    newperipheral.inputpin = loadINPUTPIN(peripheraldata.inputpin)
+  end
+  if peripheraldata.hasoutputpin then
+    newperipheral.outputpin = loadOUTPUTPIN(peripheraldata.outputpin)
+  end
   return newperipheral
 end
 return {
