@@ -26,7 +26,6 @@
 
 lume = require "lib.lume"
 log = require "lib.log"
-log.level = "debug"
 
 printCentered = (text, x, y, rows=1) ->
     font = love.graphics.getFont()

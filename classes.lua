@@ -1,6 +1,5 @@
 local lume = require("lib.lume")
 local log = require("lib.log")
-log.level = "debug"
 local printCentered
 printCentered = function(text, x, y, rows)
   if rows == nil then
