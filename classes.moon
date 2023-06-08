@@ -278,10 +278,10 @@ class PERIPHERAL extends BOARDOBJECT
         return @outputpin if lume.distance(x, y, @pos.x + @@getWidth(), @pos.y + (@@getHeight()/2)) < 10
 
     getInputPinByID: (id) =>
-        return @inputpin if @inputpin.id == id
+        return @inputpin if @hasinputpin and @inputpin.id == id
 
     getOutputPinByID: (id) =>
-        return @outputpin if @outputpin.id == id
+        return @outputpin if @hasoutputpin and @outputpin.id == id
 
     getAllPins: =>
         return { @inputpin, @outputpin }
