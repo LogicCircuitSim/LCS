@@ -1,17 +1,19 @@
 io.stdout:setvbuf("no")
-inspect = require "inspect"
-lume = require "lume"
+inspect = require "lib.inspect"
+lume = require "lib.lume"
 
 function prinspect(...)
     local value = ...
-    if type(value) == "table" then
-        local remove_all_metatables = function(item, path)
-            if getmetatable(item) == nil then return item end
-        end
-        print(inspect(value, {process = remove_all_metatables}))
-    else
-        print(value)
-    end
+    -- if type(value) == "table" then
+    --     local remove_all_metatables = function(item, path)
+    --         if getmetatable(item) == nil then return item end
+    --     end
+    --     -- print(inspect(value, {process = remove_all_metatables}))
+    --     print(inspect(value))
+    -- else
+    --     print(value)
+    -- end
+    print(inspect(value))
 end
 
 function printf(...) print(string.format(...)) end

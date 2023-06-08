@@ -1,6 +1,7 @@
 -- ==============================================================[ IMPORTS ]===================================================================--
-print('\nVersion: 1.7.1')
+print('\nVersion: 1.8.1')
 print('Starting...')
+local startTime = love.timer.getTime()
 local log = require 'lib.log'
 require 'fancyerror'
 
@@ -19,7 +20,7 @@ local bigfont = love.graphics.newFont('fonts/main.ttf', 80)
 local hugefont = love.graphics.newFont('fonts/main.ttf', 120)
 font:setFilter('nearest', 'nearest', 8)
 love.graphics.setFont(font)
-log.info('Done.')
+log.info('Done. Took ' .. formatTime(love.timer.getTime() - startTime))
 
 -- =============================================================[ VARIABLES ]==================================================================--
 
@@ -113,10 +114,10 @@ function love.load()
     boardTransform = love.math.newTransform(0,0,0,1)
 
 	camera = Camera.newSmoothWithTransform(boardTransform, 40, 0.5, 5)
-	
+
 	-- loadBoard()
 	addDefaults()
-	
+
 	-- local done = love.thread.getChannel("setup"):supply(true)
 	log.info('Done.')
 end
@@ -132,10 +133,10 @@ function love.update(dt)
 		menuX = lume.lerp(menuX, menuTargetX, 10*dt)
 	end
 	menuTransform:setTransformation(-menuX, 0)
-	
+
 	-- MENUS
 	if currentMenu == menus.title then
-		
+
 	elseif currentMenu == menus.board then
 		camera:update(dt, settings.useSmoothCubic)
 		mx, my = camera:getScreenPos(love.mouse.getPosition())
@@ -164,7 +165,7 @@ function love.update(dt)
 		maxFPSRecorded = love.timer.getFPS()
 	end
 	telemetry.dt = dt
-	
+
 	computeThreadUPS = love.thread.getChannel("ups"):pop() or computeThreadUPS
 	messages.update(dt)
 end
@@ -192,13 +193,13 @@ function love.draw()
 		love.graphics.print("Settings", bigfont, 10, 10)
 	end
 		love.graphics.translate(love.graphics.getWidth(), 0)	
-		-- ############################## TITLE ##############################
+	-- ############################## TITLE ##############################
 		if shouldShowMenu(menus.title) then
 		love.graphics.print('L.C.S.', hugefont, 10, 10)
 	end
 		love.graphics.translate(love.graphics.getWidth(), 0)
-		-- ############################## BOARDS LIST ##############################
-		if shouldShowMenu(menus.list) then
+	-- ############################## BOARDS LIST ##############################
+	if shouldShowMenu(menus.list) then
 		love.graphics.setColor(1, 1, 1)
 		love.graphics.print("Menu", bigfont, 10, 10)
 		love.graphics.print("Boards:", 20, 150)
@@ -218,8 +219,8 @@ function love.draw()
 		end
 	end
 		love.graphics.translate(love.graphics.getWidth(), 0)
-		-- ############################## BOARD ##############################
-		if shouldShowMenu(menus.board) then
+	-- ############################## BOARD ##############################
+	if shouldShowMenu(menus.board) then
 		-- camera
 		mx, my = camera:getScreenPos(love.mouse.getPosition())
 		camera:set()
@@ -410,7 +411,7 @@ function love.draw()
 		end
 		
 		love.graphics.setColor(1, 1, 1)
-		love.graphics.print(("FPS: %s | UPS: %s | %.1f%% Lag | Current Board: %d (Press [H] for Help)"):format(tostring(love.timer.getFPS()), nfc(computeThreadUPS), (100-love.timer.getFPS()/maxFPSRecorded*100), currentBoard), 10, 10)
+		love.graphics.print(("FPS: %s | UPS: %s | %.1f%% Lag | Current Board: %d (Press [F1] for Help)"):format(tostring(love.timer.getFPS()), nfc(computeThreadUPS), (100-love.timer.getFPS()/maxFPSRecorded*100), currentBoard), 10, 10)
 		if isDraggingGroup or isDraggingObject or isDraggingSelection then
 			love.graphics.print(isDraggingSelection and "Dragging Selection" or (isDraggingGroup and "Dragging Group ID: "..tostring(draggedGroupID) or (isDraggingObject and "Dragging Object ID: "..tostring(draggedObjectID) or "")), 10, 70)
 		end
@@ -676,8 +677,24 @@ function love.keypressed(key, scancode, isrepeat)
 	if keyPressed(key, 'f11') then
 		settings.fullscreen = not settings.fullscreen
 		love.window.setFullscreen(settings.fullscreen, "exclusive")
-		messages.add("Toggled Fullscreen to: ", settings.fullscreen)
+		messages.add("Toggled Fullscreen to: "..tostring(settings.fullscreen))
 	end
+
+	if keyPressed(key, 'f9') then
+		for i=1,10 do 
+			love.filesystem.write(
+				string.format("board%d.json", i),
+				json.encode({
+					gates = {},
+					peripherals = {},
+					connections = {},
+					groups = {}
+				})
+			)
+		end
+		messages.add("Wiped Board Save Files")
+	end
+	
 
 	-- BOARD MENU
 	if keyPressed(key, 'f1', currentMenu==menus.board) then settings.showHelp = not settings.showHelp end
@@ -777,9 +794,12 @@ function love.keypressed(key, scancode, isrepeat)
 	if keyPressed(key, '0', nil, currentMenu==menus.board) then camera:reset() end
 	if keyPressed(key, 'space', nil, currentMenu==menus.board) then camera:center() end
 
-	-- if keyPressed(key, 'f') then
-	-- 	love.thread.getChannel("printDebug"):push(true)
-	-- end
+	if keyPressed(key, 'f') then
+		-- print(classes.GATE(0,0))
+		-- print(classes.GATE(0,0).__class)
+		-- print(classes.GATE(0,0).__name)
+		-- print(classes.GATE(0,0).__class.__name)
+	end
 end
 
 
@@ -787,6 +807,20 @@ end
 
 function shouldShowMenu(menu)
 	return menu==currentMenu or menu==currentMenu-1 or menu==currentMenu+1
+end
+
+function prepForSave(t)
+	local newTable = lume.deepclone(t)
+	-- remove functions
+	for k, v in pairs(newTable) do
+		if type(v) == 'function' then
+			newTable[k] = nil
+		elseif type(v) == 'table' then
+			newTable[k] = prepForSave(v)
+		end
+	end
+	
+	return newTable
 end
 
 function any(tbl)
@@ -806,16 +840,10 @@ function keyPressed(key, keys, mods, others)
 	if type(keys) == 'table' then
 		if keys.mode == 'any' then
 			isPressed = false
-			-- collect(keys):each(function(k)
-			-- 	if key == k then isPressed = true end
-			-- end)
 			for i, k in ipairs(keys) do
 				if key == k then isPressed = true end
 			end
 		elseif keys.mode == 'all' then
-			-- collect(keys):each(function(k)
-			-- 	if key ~= k then isPressed = false end
-			-- end)
 			for i, k in ipairs(keys) do
 				if key ~= k then isPressed = false end
 			end
@@ -883,11 +911,11 @@ function keyPressed(key, keys, mods, others)
 			for i, o in ipairs(others) do
 				if not o then isPressed = false end
 			end
-		end
-		if type(others) == 'boolean' then
+		elseif type(others) == 'boolean' then
 			isPressed = isPressed and others
+		else
+			log.info("keyPressed: unusable type of 'others': "..tostring(others)..', type:'..type(others))
 		end
-		print("[WARNING] keyPressed: unusable type of 'others':", others, type(others))
 	end
 
 	return isPressed
@@ -968,24 +996,27 @@ function loadBoard()
 end
 
 function saveBoard()
+	-- prinspect(gates)
+	-- prinspect(prepForSave(gates))
+
 	local success, message = love.filesystem.write(
 		string.format("board%d.json", currentBoard),
 		json.encode({
-			gates = gates,
-			peripherals = peripherals,
-			connections = connections,
-			groups = groups
+			gates = prepForSave(gates),
+			peripherals = prepForSave(peripherals),
+			connections = prepForSave(connections),
+			groups = prepForSave(groups)
 		})
 	)
-	love.filesystem.write(
-		string.format("board%d.lua", currentBoard), 
-		lume.serialize({	
-			gates = gates,
-			peripherals = peripherals,
-			connections = connections,
-			groups = groups
-		}
-	)
+	-- love.filesystem.write(
+	-- 	string.format("board%d.lua", currentBoard), 
+	-- 	lume.serialize({
+	-- 		gates = removeAllFunctionsFromTable(gates),
+	-- 		peripherals = removeAllFunctionsFromTable(peripherals),
+	-- 		connections = removeAllFunctionsFromTable(connections),
+	-- 		groups = removeAllFunctionsFromTable(groups)
+	-- 	})
+	-- )
 	if success then messages.add(string.format("Board %d Saved!", currentBoard))
 	else messages.add(string.format("Board could not be Saved...")) end
 end
