@@ -468,12 +468,12 @@ do
       end
     end,
     getInputPinByID = function(self, id)
-      if self.inputpin.id == id then
+      if self.hasinputpin and self.inputpin.id == id then
         return self.inputpin
       end
     end,
     getOutputPinByID = function(self, id)
-      if self.outputpin.id == id then
+      if self.hasoutputpin and self.outputpin.id == id then
         return self.outputpin
       end
     end,

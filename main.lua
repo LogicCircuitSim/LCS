@@ -1,21 +1,21 @@
 -- ==============================================================[ IMPORTS ]===================================================================--
-print('\nVersion: 1.8.1')
-print('Starting...')
+print'\nVersion: 1.8.2'
+print'Starting...'
 local startTime = love.timer.getTime()
 local log = require 'lib.log'
 log.level = 'info'
 require 'fancyerror'
 
-log.info('Loading libraries...')
+log.info'Loading libraries...'
 require 'lib.noahsutils'
 local lume = require 'lib.lume'
 local messages = require 'lib.messages'
 local classes = require 'classes'
 local json = require 'lib.json'
 local Camera = require 'lib.camera'
-log.info('Done.')
+log.info'Done.'
 
-log.info('Loading Font...')
+log.info'Loading Font...'
 local font = love.graphics.newFont('fonts/main.ttf', 20)
 local bigfont = love.graphics.newFont('fonts/main.ttf', 80)
 local hugefont = love.graphics.newFont('fonts/main.ttf', 120)
@@ -25,8 +25,9 @@ log.info('Done. Took ' .. formatTime(love.timer.getTime() - startTime))
 
 -- =============================================================[ VARIABLES ]==================================================================--
 
-log.info('Initializing variables...')
-local lastX, lastY = 0, 0
+log.info'Initializing variables...'
+local SAVECATCHMODE = false
+if SAVECATCHMODE then log.info'SAVE CATCH MODE ENABLED' end
 
 -- worker
 local gates = {}
@@ -63,7 +64,7 @@ local menus = {
 	list = 3,
 	board = 4
 }
-local currentMenu = menus.title
+local currentMenu = menus.board
 local menuX, menuTargetX, menuIsSliding = 0, 0, false
 local telemetryInterval, telemetryIntervalLast = 500, love.timer.getTime()
 local telemetry, telemetryShow = {}, {}
@@ -76,7 +77,7 @@ local style
 
 local settings = {
 	showGrid = true,
-	useSmoothCubic = true,
+	useSmoothCubic = false,
 	showPinIDs = false,
 	showPinStates = false,
 	showGateIDs = false,
@@ -84,7 +85,10 @@ local settings = {
 	showHelp = false,
 	showDebug = false,
 	showTelemetry = false,
-	fullscreen = false
+	showFPS = true,
+	fullscreen = false,
+
+	deleteWithX = false,
 	-- showFPS = false
 	-- VSync = false
 }
@@ -93,8 +97,7 @@ local camera
 
 local menuTransform, boardTransform
 
-
-log.info('Done.')
+log.info'Done.'
 
 -- ===========================================================[ MAIN FUNCTIONS ]===============================================================--
 
@@ -184,22 +187,22 @@ function love.draw()
 
 	love.graphics.push('transform')
 	love.graphics.applyTransform(menuTransform)
-	-- ############################## ABOUT ##############################
+	-- ##############################[  ABOUT  ]##############################
 	if shouldShowMenu(menus.about) then
 		love.graphics.print("About", bigfont, 10, 10)
 	end
 	love.graphics.translate(love.graphics.getWidth(), 0)
-	-- ############################## SETTINGS ##############################
+	-- ##############################[  SETTINGS  ]##############################
 	if shouldShowMenu(menus.settings) then
 		love.graphics.print("Settings", bigfont, 10, 10)
 	end
 		love.graphics.translate(love.graphics.getWidth(), 0)	
-	-- ############################## TITLE ##############################
+	-- ##############################[  TITLE  ]##############################
 		if shouldShowMenu(menus.title) then
 		love.graphics.print('L.C.S.', hugefont, 10, 10)
 	end
 		love.graphics.translate(love.graphics.getWidth(), 0)
-	-- ############################## BOARDS LIST ##############################
+	-- ##############################[  BOARDS LIST  ]##############################
 	if shouldShowMenu(menus.list) then
 		love.graphics.setColor(1, 1, 1)
 		love.graphics.print("Menu", bigfont, 10, 10)
@@ -220,7 +223,7 @@ function love.draw()
 		end
 	end
 		love.graphics.translate(love.graphics.getWidth(), 0)
-	-- ############################## BOARD ##############################
+	-- ##############################[  BOARD  ]##############################
 	if shouldShowMenu(menus.board) then
 		-- camera
 		mx, my = camera:getScreenPos(love.mouse.getPosition())
@@ -294,8 +297,8 @@ function love.draw()
 					local curve = love.math.newBezierCurve({ 
 						pinPos.x, pinPos.y,
 						pinPos.x + offset, pinPos.y,
-						love.mouse.getX() - offset, love.mouse.getY(),
-						love.mouse.getX(), love.mouse.getY()
+						mx - offset, my,
+						mx, my
 					})
 					love.graphics.line(curve:render())
 				end
@@ -424,10 +427,9 @@ function love.draw()
 	-- love.graphics.pop()
 
 	-- OTHERS
-	lastX, lastY = love.mouse.getPosition()
-	love.graphics.setColor(1, 1, 1)
-
-	-- love.graphics.print(('Menu: #%d'):format(currentMenu), love.graphics.getWidth()-100, 10)
+	if SAVECATCHMODE then
+		love.graphics.print({{0.6, 0.89, 0.63}, 'SAVE CATCH MODE ENABLED'}, love.graphics.getWidth()-(font:getWidth('SAVE CATCH MODE ENABLED'))-10, 10)
+	end
 end
 
 function love.quit()
@@ -442,79 +444,79 @@ end
 -- #                       LOVE MOUSE PRESSED                      #
 -- #################################################################
 function love.mousepressed(x, y, button)
+	-- ************************************[ BOARD ]************************************ --
+	if currentMenu == menus.board then
+		x,y = camera:getScreenPos( x,y )
+		--=====================[ LEFT CLICK ]=====================--
+		if button == 1 then
+			dontSelect = false
+			for bob in myBobjects() do
+				local inpin  = bob:getInputPinAt(x, y)
+				local outpin = bob:getOutputPinAt(x, y)
 
-	x,y = camera:getScreenPos( x,y )
-	--=====================[ LEFT CLICK ]=====================--
-	if button == 1 then
-		-- log.debug'Left Click'
-		dontSelect = false
-		for bob in myBobjects() do
-			local inpin  = bob:getInputPinAt(x, y)
-			local outpin = bob:getOutputPinAt(x, y)
-
-			if selectedPinID == 0 then
-				if outpin then
-					log.debug'Left Click on Output Pin'
-					dontSelect = true
-					outpin.isConnected = true
-					selectedPinID = outpin.id or selectedPinID
-				end
-			else
-				if inpin then
-					log.debug'Left Click on Input Pin'
-					dontSelect = true
-					if not inpin.isConnected then
-						inpin.isConnected = true
-						addConnection({ outputpin=getPinByID(selectedPinID), inputpin=inpin })
-						selectedPinID = 0
+				if selectedPinID == 0 then
+					if outpin then
+						log.debug'Left Click on Output Pin'
+						dontSelect = true
+						outpin.isConnected = true
+						selectedPinID = outpin.id or selectedPinID
+					end
+				else
+					if inpin then
+						log.debug'Left Click on Input Pin'
+						dontSelect = true
+						if not inpin.isConnected then
+							inpin.isConnected = true
+							addConnection({ outputpin=getPinByID(selectedPinID), inputpin=inpin })
+							selectedPinID = 0
+						end
 					end
 				end
-			end
-			if bob:isInside(x, y) and not dontSelect then
-				if bob.__name == "INPUT" then
-					bob:flip()
-				elseif bob.__name == "OUTPUT" then
-					if plotterID == bob.id then
-						showPlotter = false
-						plotterID = 0
-					else
-						plotterID = bob.id
-						plotterData = {}
-						showPlotter = true
+				if bob:isInside(x, y) and not dontSelect then
+					if bob.__class.__name == "INPUT" then
+						bob:flip()
+					elseif bob.__class.__name == "OUTPUT" then
+						if plotterID == bob.id then
+							showPlotter = false
+							plotterID = 0
+						else
+							plotterID = bob.id
+							plotterData = {}
+							showPlotter = true
+						end
 					end
+					dontSelect = true
 				end
-				dontSelect = true
 			end
-		end
-		if not dontSelect then
-			isSelecting = true
-			selection.x1 = x
-			selection.y1 = y
-			selection.x2 = x
-			selection.y2 = y
-		end
-	--=====================[ RIGHT CLICK ]=====================--
-	elseif button == 2 then
-		
-	--=====================[ MIDDLE CLICK ]=====================--
-	elseif button == 3 then
-		for i,group in ipairs(groups) do
-			if x > group.x1 and x < group.x2 and y > group.y1 and y < group.y2 then
-				draggedGroupID = i
-				isDraggingGroup = true
+			if not dontSelect then
+				isSelecting = true
+				selection.x1 = x
+				selection.y1 = y
+				selection.x2 = x
+				selection.y2 = y
 			end
-		end
-
-		if not isDraggingGroup then
-			if x > selection.x1 and x < selection.x2 and y > selection.y1 and y < selection.y2 then
-				isDraggingSelection = true
+		--=====================[ RIGHT CLICK ]=====================--
+		elseif button == 2 then			
+		--=====================[ MIDDLE CLICK ]=====================--
+		elseif button == 3 then
+			for i,group in ipairs(groups) do
+				if x > group.x1 and x < group.x2 and y > group.y1 and y < group.y2 then
+					draggedGroupID = i
+					isDraggingGroup = true
+				end
 			end
 
 			if not isDraggingGroup then
-				for bob in myBobjects() do
-					if bob:isInside(x, y) then
-						draggedObjectID = bob.id
-						isDraggingObject = true
+				if x > selection.x1 and x < selection.x2 and y > selection.y1 and y < selection.y2 then
+					isDraggingSelection = true
+				end
+
+				if not isDraggingGroup then
+					for bob in myBobjects() do
+						if bob:isInside(x, y) then
+							draggedObjectID = bob.id
+							isDraggingObject = true
+						end
 					end
 				end
 			end
@@ -660,7 +662,174 @@ end
 -- #################################################################
 -- #                        LOVE KEY PRESSED                       #
 -- #################################################################
+
 function love.keypressed(key, scancode, isrepeat)
+	if key == 'insert' then
+		SAVECATCHMODE = not SAVECATCHMODE
+		log.warn('SAVECATCHMODE: '..tostring(SAVECATCHMODE))
+	end
+
+	if SAVECATCHMODE then
+		saveKeyPressed(key, scancode, isrepeat)
+	else
+		devKeyPressed(key, scancode, isrepeat)
+	end
+end
+
+function saveKeyPressed(key, scancode, isrepeat)
+	-- ANY MENU
+	whenKeyPressed(key, 'escape', nil, nil, function()
+		if currentMenu>menus.title then currentMenu=currentMenu-1
+		elseif currentMenu<menus.title then currentMenu=currentMenu+1
+		end
+	end)
+
+	if key == 'left' and love.keyboard.isDown('lctrl') then
+		currentMenu=currentMenu-1
+	end
+	if key == 'right' and love.keyboard.isDown('lctrl') then 
+		currentMenu=currentMenu+1
+	end
+
+	whenKeyPressed(key, 'f11', nil, nil, function()
+		settings.fullscreen = not settings.fullscreen
+		love.window.setFullscreen(settings.fullscreen, "exclusive")
+		messages.add("Toggled Fullscreen to: "..tostring(settings.fullscreen))
+	end)
+
+	whenKeyPressed(key, 'f9', nil, nil, function()
+		for i=1,10 do 
+			love.filesystem.write(
+				string.format("board%d.json", i),
+				json.encode({
+					gates = {},
+					peripherals = {},
+					connections = {},
+					groups = {}
+				}))
+		end
+		messages.add("Wiped Board Save Files")
+	end)
+
+	-- BOARD MENU
+	local mx,my = camera:getScreenPos(love.mouse.getPosition())
+
+	whenKeyPressed(key, 'f1', nil, currentMenu==menus.board, function() settings.showHelp = not settings.showHelp end)
+	whenKeyPressed(key, 'f2', nil, currentMenu==menus.board, function() settings.showDebug = not settings.showDebug end)
+	whenKeyPressed(key, 'f3', nil, currentMenu==menus.board, function() settings.showFPS = not settings.showFPS end)
+	whenKeyPressed(key, 'f4', nil, currentMenu==menus.board, function() settings.showGrid = not settings.showGrid end)
+
+	whenKeyPressed(key, 'i', nil, currentMenu==menus.board, function()
+		settings.useSmoothCubic = not settings.useSmoothCubic
+		messages.add('Use Smooth Cubic: '..tostring(settings.useSmoothCubic))
+	end)
+
+	whenKeyPressed(key, 's', 'ctrl', currentMenu==menus.board, function() saveBoard() end)
+	whenKeyPressed(key, 'l', 'ctrl', currentMenu==menus.board, function() loadBoard() end)
+	whenKeyPressed(key, 'r', 'ctrl', currentMenu==menus.board, function() resetBoard() end)
+	whenKeyPressed(key, 'd', 'ctrl', currentMenu==menus.board, function() addDefaults() end)
+	whenKeyPressed(key, 'p', 'ctrl', currentMenu==menus.board, function() settings.showPlotter = not settings.showPlotter end)
+
+	whenKeyPressed(key, 'c', 'ctrl', currentMenu==menus.board, function()
+		love.system.setClipboardText(
+			json.encode({
+				gates = prepForSave(gates),
+				peripherals = prepForSave(peripherals),
+				connections = prepForSave(connections),
+				groups = prepForSave(groups)
+			}))
+		messages.add("Board Data copied to Clipboard!")
+	end)
+	whenKeyPressed(key, 'v', 'ctrl', currentMenu==menus.board, function()
+		local text = love.system.getClipboardText()
+		if text then
+			if text:match("gates") and text:match("peripherals") and text:match("connections") then
+				local data = json.decode(text)
+				if data then
+					resetBoard()
+					if data.gates then
+						for i, gatedata in ipairs(data.gates) do
+							addGate(classes.loadGATE(gatedata))
+						end
+					end
+					if data.peripherals then
+						for i, peripheraldata in ipairs(data.peripherals) do
+							addPeripheral(classes.loadPERIPHERAL(peripheraldata))
+						end
+					end
+					if data.connections then
+						for i, connection in ipairs(data.connections) do
+							addConnection(connection)
+						end
+					end
+					if data.groups then
+						for i, group in ipairs(data.groups) do
+							lume.push(groups, group)
+						end
+					end
+					messages.add("Board Data loaded from Clipboard!")
+				end
+			end
+		end
+	end)
+
+	whenKeyPressed(key, 'q', 'ctrl', currentMenu==menus.board, function()
+		love.event.quit()
+	end)
+
+	whenKeyPressed(key, 'g', nil, currentMenu==menus.board, function()
+		addGroup()
+		selection = {x1=0, y1=0, x2=0, y2=0, ids={}}
+		messages.add("Group created!")
+	end)
+
+	whenKeyPressed(key, 'delete', nil, currentMenu==menus.board, function()
+		if selectedPinID ~= 0 then --------------------- First Pin of new Connection selected
+			local pin = getPinByID(selectedPinID)
+			if pin then pin.isConnected = false end
+			selectedPinID = 0
+		else ------------------------------------------- no Pin selected
+			local pinID = getPinIDByPos(mx, my)
+			if pinID then
+				removeConnectionWithPinID(pinID)
+			else
+				local bobID = getBobIDByPos(mx, my)
+				if bobID then
+					removeBobByID(bobID)
+				end
+			end
+		end
+	end)
+
+	whenKeyPressed(key, 'delete', 'shift', currentMenu==menus.board, function()
+		local groupID = getGroupIDByPos(mx, my)
+		if groupID then
+			removeGroupByID(groupID, love.keyboard.isDown("lalt"))
+		end
+	end)	
+
+	whenKeyPressed(key, any{'1','2','3','4','5','6','7','8','9'}, 'alt', currentMenu==menus.board, function()
+		saveBoard()
+		currentBoard = tonumber(key)
+		loadBoard()
+	end)
+
+	whenKeyPressed(key, '1', nil, currentMenu==menus.board, function() addPeripheral(classes.INPUT (mx - classes.PERIPHERAL:getWidth()/2, my - classes.PERIPHERAL:getHeight()/2)) end)
+	whenKeyPressed(key, '2', nil, currentMenu==menus.board, function() addPeripheral(classes.OUTPUT(mx - classes.PERIPHERAL:getWidth()/2, my - classes.PERIPHERAL:getHeight()/2)) end)
+	whenKeyPressed(key, '3', nil, currentMenu==menus.board, function() addPeripheral(classes.CLOCK (mx - classes.PERIPHERAL:getWidth()/2, my - classes.PERIPHERAL:getHeight()/2)) end)
+	whenKeyPressed(key, '4', nil, currentMenu==menus.board, function() addPeripheral(classes.BUFFER(mx - classes.PERIPHERAL:getWidth()/2, my - classes.PERIPHERAL:getHeight()/2)) end)
+	whenKeyPressed(key, '5', nil, currentMenu==menus.board, function() addGate(classes.AND (mx - classes.GATE:getWidth()/2, my - classes.GATE:getHeight(2)/2)) end)
+	whenKeyPressed(key, '6', nil, currentMenu==menus.board, function() addGate(classes.OR  (mx - classes.GATE:getWidth()/2, my - classes.GATE:getHeight(2)/2)) end)
+	whenKeyPressed(key, '7', nil, currentMenu==menus.board, function() addGate(classes.NOT (mx - classes.GATE:getWidth()/2, my - classes.GATE:getHeight(1)/2)) end)
+
+
+	whenKeyPressed(key, 'sapce', nil, currentMenu==menus.board, function()
+		camera:reset()
+		camera:center()
+	end)	
+end
+
+function devKeyPressed(key, scancode, isrepeat)
 	-- ANY MENU
 	if keyPressed(key, 'escape') then
 		if currentMenu>menus.title then currentMenu=currentMenu-1
@@ -698,12 +867,13 @@ function love.keypressed(key, scancode, isrepeat)
 	
 
 	-- BOARD MENU
-	if keyPressed(key, 'f1', currentMenu==menus.board) then settings.showHelp = not settings.showHelp end
-	if keyPressed(key, 'f2', currentMenu==menus.board) then settings.showDebug = not settings.showDebug end
-	if keyPressed(key, 'f3', currentMenu==menus.board) then settings.showFPS = not settings.showFPS end
-	if keyPressed(key, 'f4', currentMenu==menus.board) then settings.showGrid = not settings.showGrid end
+	local mx,my = camera:getScreenPos(love.mouse.getPosition())
+	if keyPressed(key, 'f1', nil, currentMenu==menus.board) then settings.showHelp = not settings.showHelp end
+	if keyPressed(key, 'f2', nil, currentMenu==menus.board) then settings.showDebug = not settings.showDebug end
+	if keyPressed(key, 'f3', nil, currentMenu==menus.board) then settings.showFPS = not settings.showFPS end
+	if keyPressed(key, 'f4', nil, currentMenu==menus.board) then settings.showGrid = not settings.showGrid end
 
-	if keyPressed(key, 'i', currentMenu==menus.board) then settings.useSmoothCubic = not settings.useSmoothCubic; messages.add('Use Smooth Cubic: '..tostring(settings.useSmoothCubic)) end
+	if keyPressed(key, 'i', nil, currentMenu==menus.board) then settings.useSmoothCubic = not settings.useSmoothCubic; messages.add('Use Smooth Cubic: '..tostring(settings.useSmoothCubic)) end
 
 	if keyPressed(key, 's', 'ctrl', currentMenu==menus.board) then saveBoard() end
 	if keyPressed(key, 'l', 'ctrl', currentMenu==menus.board) then loadBoard() end
@@ -753,11 +923,11 @@ function love.keypressed(key, scancode, isrepeat)
 			if pin then pin.isConnected = false end
 			selectedPinID = 0
 		else  -- no Pin selected
-			local pinID = getPinIDByPos(x, y)
+			local pinID = getPinIDByPos(mx, my)
 			if pinID then
 				removeConnectionWithPinID(pinID)
 			else
-				local bobID = getBobIDByPos(love.mouse.getX(), love.mouse.getY())
+				local bobID = getBobIDByPos(mx, my)
 				if bobID then
 					removeBobByID(bobID)
 				end
@@ -766,7 +936,7 @@ function love.keypressed(key, scancode, isrepeat)
 	end
 
 	if keyPressed(key, 'delete', 'shift', currentMenu==menus.board) then
-		local groupID = getGroupIDByPos(love.mouse.getX(), love.mouse.getY())
+		local groupID = getGroupIDByPos(mx, my)
 		if groupID then
 			removeGroupByID(groupID, love.keyboard.isDown("lalt"))
 		end
@@ -778,19 +948,13 @@ function love.keypressed(key, scancode, isrepeat)
 		loadBoard()
 	end
 
-	if keyPressed(key, '1', nil, currentMenu==menus.board) then addPeripheral(classes.INPUT (love.mouse.getX() - classes.PERIPHERAL:getWidth()/2, love.mouse.getY() - classes.PERIPHERAL:getHeight()/2)) end
-	if keyPressed(key, '2', nil, currentMenu==menus.board) then addPeripheral(classes.OUTPUT(love.mouse.getX() - classes.PERIPHERAL:getWidth()/2, love.mouse.getY() - classes.PERIPHERAL:getHeight()/2)) end
-	if keyPressed(key, '3', nil, currentMenu==menus.board) then addPeripheral(classes.CLOCK (love.mouse.getX() - classes.PERIPHERAL:getWidth()/2, love.mouse.getY() - classes.PERIPHERAL:getHeight()/2)) end
-	if keyPressed(key, '4', nil, currentMenu==menus.board) then addPeripheral(classes.BUFFER(love.mouse.getX() - classes.PERIPHERAL:getWidth()/2, love.mouse.getY() - classes.PERIPHERAL:getHeight()/2)) end
-	if keyPressed(key, '5', nil, currentMenu==menus.board) then addGate(classes.AND (love.mouse.getX() - classes.GATE:getWidth()/2, love.mouse.getY() - classes.GATE:getHeight(2)/2)) end
-	if keyPressed(key, '6', nil, currentMenu==menus.board) then addGate(classes.OR  (love.mouse.getX() - classes.GATE:getWidth()/2, love.mouse.getY() - classes.GATE:getHeight(2)/2)) end
-	if keyPressed(key, '7', nil, currentMenu==menus.board) then addGate(classes.NOT (love.mouse.getX() - classes.GATE:getWidth()/2, love.mouse.getY() - classes.GATE:getHeight(1)/2)) end
-
-
-	-- if keyPressed(key, '7', nil, currentMenu==menus.board) then addGate(constructNAND(love.mouse.getX() - GATEgetWidth()/2, love.mouse.getY() - GATEgetHeight()/2)) end
-	-- if keyPressed(key, '8', nil, currentMenu==menus.board) then addGate(constructNOR (love.mouse.getX() - GATEgetWidth()/2, love.mouse.getY() - GATEgetHeight()/2)) end
-	-- if keyPressed(key, '9', nil, currentMenu==menus.board) then addGate(constructXOR (love.mouse.getX() - GATEgetWidth()/2, love.mouse.getY() - GATEgetHeight()/2)) end
-	-- if keyPressed(key, '0', nil, currentMenu==menus.board) then addGate(constructXNOR(love.mouse.getX() - GATEgetWidth()/2, love.mouse.getY() - GATEgetHeight()/2)) end
+	if keyPressed(key, '1', nil, currentMenu==menus.board) then addPeripheral(classes.INPUT (mx - classes.PERIPHERAL:getWidth()/2, my - classes.PERIPHERAL:getHeight()/2)) end
+	if keyPressed(key, '2', nil, currentMenu==menus.board) then addPeripheral(classes.OUTPUT(mx - classes.PERIPHERAL:getWidth()/2, my - classes.PERIPHERAL:getHeight()/2)) end
+	if keyPressed(key, '3', nil, currentMenu==menus.board) then addPeripheral(classes.CLOCK (mx - classes.PERIPHERAL:getWidth()/2, my - classes.PERIPHERAL:getHeight()/2)) end
+	if keyPressed(key, '4', nil, currentMenu==menus.board) then addPeripheral(classes.BUFFER(mx - classes.PERIPHERAL:getWidth()/2, my - classes.PERIPHERAL:getHeight()/2)) end
+	if keyPressed(key, '5', nil, currentMenu==menus.board) then addGate(classes.AND (mx - classes.GATE:getWidth()/2, my - classes.GATE:getHeight(2)/2)) end
+	if keyPressed(key, '6', nil, currentMenu==menus.board) then addGate(classes.OR  (mx - classes.GATE:getWidth()/2, my - classes.GATE:getHeight(2)/2)) end
+	if keyPressed(key, '7', nil, currentMenu==menus.board) then addGate(classes.NOT (mx - classes.GATE:getWidth()/2, my - classes.GATE:getHeight(1)/2)) end
 
 	if keyPressed(key, '0', nil, currentMenu==menus.board) then camera:reset() end
 	if keyPressed(key, 'space', nil, currentMenu==menus.board) then camera:center() end
@@ -802,6 +966,7 @@ function love.keypressed(key, scancode, isrepeat)
 		-- print(classes.GATE(0,0).__class.__name)
 	end
 end
+
 
 
 --==============================================[ CUSTOM FUNCTIONS ]==============================================--
@@ -877,8 +1042,7 @@ function keyPressed(key, keys, mods, others)
 			-- 	isPressed = isPressed and love.keyboard.isDown('lgui') or love.keyboard.isDown('rgui')
 			-- else
 			-- 	isPressed = isPressed and not love.keyboard.isDown('lgui') and not love.keyboard.isDown('rgui')
-			-- end
-			
+			-- end			
 		else
 			if mods == 'shift' then
 				isPressed = isPressed and love.keyboard.isDown('lshift') or love.keyboard.isDown('rshift')
@@ -903,12 +1067,9 @@ function keyPressed(key, keys, mods, others)
 		end
 	end
 
-	-- others like inMenu etc.
+	-- others like menu etc.
 	if others ~= nil then
-		if type(others) == 'table' then			
-			-- collect(others):each(function(o)
-			-- 	if not o then isPressed = false end
-			-- end)
+		if type(others) == 'table' then		
 			for i, o in ipairs(others) do
 				if not o then isPressed = false end
 			end
@@ -922,20 +1083,64 @@ function keyPressed(key, keys, mods, others)
 	return isPressed
 end
 
+function whenKeyPressed(key, keys, mods, others, func)
+	if keyPressed(key, keys, mods, others) then
+		local success, result = pcall(func)
+		if not success then
+			log.error('whenKeyPressed for key ['..tostring(keys)..']: '..result)
+		end
+		return success, result
+	end
+	return false
+end
+
 function addGate(gate)
-	log.debug('Added Gate with ID: '..gate.id)
-	lume.push(gates, gate)
-	-- love.thread.getChannel("addGate"):push(json.encode(gate))
+	local addgatefunc = function()
+		log.debug('Added Gate with ID: '..gate.id)
+		lume.push(gates, gate)
+		-- love.thread.getChannel("addGate"):push(json.encode(gate))
+	end
+
+	if SAVECATCHMODE then
+		local success, result = pcall(addgatefunc)
+		if not success then
+			log.error('addGate: '..result)
+		end
+	else
+		addgatefunc()
+	end
 end
 function addPeripheral(peripheral)
-	log.debug('Added Peripheral with ID: '..peripheral.id)
-	lume.push(peripherals, peripheral)
-	-- love.thread.getChannel("addPeripheral"):push(json.encode(peripheral))
+	local addperfunc = function()		
+		log.debug('Added Peripheral with ID: '..peripheral.id)
+		lume.push(peripherals, peripheral)
+		-- love.thread.getChannel("addPeripheral"):push(json.encode(peripheral))
+	end
+
+	if SAVECATCHMODE then
+		local success, result = pcall(addperfunc)
+		if not success then
+			log.error('addPeripheral: '..result)
+		end
+	else
+		addperfunc()
+	end
 end
 function addConnection(con)
-	log.debug('Added Connection, Outputpin ID:'..con.outputPin.id..' and Inputpin ID:'..con.inputPin.id)
-	lume.push(connections, con)
-	-- love.thread.getChannel("addConnection"):push(json.encode(con))
+	local addconfunc = function()
+		log.debug('Added Connection, Outputpin ID:'..con.outputpin.id..' and Inputpin ID:'..con.inputpin.id)
+		lume.push(connections, con)
+		-- love.thread.getChannel("addConnection"):push(json.encode(con))
+	end
+
+	if SAVECATCHMODE then
+		local success, result = pcall(addconfunc)
+		if not success then
+			log.error('addConnection: '..result)
+		end
+	else
+		addconfunc()
+	end
 end
 
 
@@ -951,7 +1156,6 @@ function resetBoard()
 	selection = { x1 = 0, y1 = 0, x2 = 0, y2 = 0, ids = {} }
 	isDraggingGroup = false
 	draggedGroupID = 0
-	showPlotter = false
 	plotterID = 0
 	plotterData = {}
 	-- love.thread.getChannel("reset"):push(true)
@@ -970,43 +1174,52 @@ function addDefaults()
 end
 
 function loadBoard()
-	resetBoard()
-	contents = love.filesystem.read(string.format("board%d.json", currentBoard))
-	if contents then
-		local data = json.decode(contents)
-		if data.gates then
-			for i, gatedata in ipairs(data.gates) do
-				local success, result = pcall(classes.loadGATE, gatedata)
-				if success then addGate(result)
-				else log.error('loading Gate failed: '..tostring(result)) end
+	local loadingfunc = function()
+		contents = love.filesystem.read(string.format("board%d.json", currentBoard))
+		if contents then
+			local data = json.decode(contents)
+			resetBoard()
+			if data.gates then
+				for i, gatedata in ipairs(data.gates) do
+					addGate(classes.loadGATE(gatedata))
+				end
 			end
+			if data.peripherals then
+				for i, peripheraldata in ipairs(data.peripherals) do
+					addPeripheral(classes.loadPERIPHERAL(peripheraldata))
+				end
+			end
+			if data.connections then
+				for i, connection in ipairs(data.connections) do
+					addConnection(connection)
+				end
+			end
+			if data.groups then
+				for i, group in ipairs(data.groups) do
+					lume.push(groups, group)
+				end
+			end
+			messages.add(string.format("Board %d Loaded!", currentBoard))
+		else
+			log.warn('board file not found')
 		end
-		if data.peripherals then
-			for i, peripheraldata in ipairs(data.peripherals) do
-				local success, result = pcall(classes.loadPERIPHERAL, peripheraldata)
-				-- classes.loadPERIPHERAL(peripheraldata)
-				if success then addPeripheral(result)
-				else log.error('loading Peripheral failed: '..tostring(result)) end
-			end
-		end
-		if data.connections then
-			for i, connection in ipairs(data.connections) do
-				addConnection(connection)
-			end
-		end
-		if data.groups then
-			for i, group in ipairs(data.groups) do
-				lume.push(groups, group)
-			end
+	end
+
+	if SAVECATCHMODE then
+		local success, result = pcall(loadingfunc)
+		if not success then
+			log.error('loading board failed: '..tostring(result))
+		else
+			messages.add(string.format("Board %d Loaded!", currentBoard))
 		end
 	else
-		log.warn('board file not found')
+		loadfunc()
+		messages.add(string.format("Board %d Loaded!", currentBoard))
 	end
-	messages.add(string.format("Board %d Loaded!", currentBoard))
 end
 
 function saveBoard()
-	local success, result = pcall(function()
+	local savefunc = function()
 		local lsucc, lmessage = love.filesystem.write(
 			string.format("board%d.json", currentBoard),
 			json.encode({
@@ -1017,53 +1230,68 @@ function saveBoard()
 			})
 		)
 		return lmessage
-	end)
-	
-	if success then messages.add(string.format("Board %d Saved!", currentBoard))
+	end
+
+	if SAVECATCHMODE then
+		local success, result = pcall(savefunc)
+		if not success then
+			log.error('saving board failed: '..tostring(result))
+		else
+			messages.add(string.format("Board %d Saved!", currentBoard))
+		end
 	else
-		messages.add(string.format("Board could not be Saved..."))
-		log.warn('saving board failed: '..tostring(result))
+		savefunc()
+		messages.add(string.format("Board %d Saved!", currentBoard))
 	end
 end
 
 function addGroup()
-	local group = { x1 = 10000, y1 = 10000, x2 = 0, y2 = 0, ids = {}}
-	local hasBobjects = false
-	local padding = 20
+	local addgroupfunc = function()
+		local group = { x1 = 10000, y1 = 10000, x2 = 0, y2 = 0, ids = {}}
+		local hasBobjects = false
+		local padding = 20
 
-	for bob in myBobjects() do
-		-- if collect(selection.ids):contains(bob.id)
-		-- and groups:every(function(key,group) return not collect(group.ids):contains(bob.id) end) then
-		-- end
-		log.debug(bob.id)
-		if lume.find(selection.ids, bob.id) and
-		not lume.any(groups, function(x) return lume.find(x, bob,id) end) then
-			hasBobjects = true
-			if bob.pos.x < group.x1 then
-				group.x1 = bob.pos.x
-			end
-			if bob.pos.y < group.y1 then
-				group.y1 = bob.pos.y
-			end
-			if bob.pos.x > group.x2 then
-				group.x2 = bob.pos.x + bob:getWidth() + padding
-			end
-			if bob.pos.y > group.y2 then
-				group.y2 = bob.pos.y + bob:getHeight() + padding
-			end
+		for bob in myBobjects() do
+			-- if collect(selection.ids):contains(bob.id)
+			-- and groups:every(function(key,group) return not collect(group.ids):contains(bob.id) end) then
+			-- end
+			log.debug(bob.id)
+			if lume.find(selection.ids, bob.id) and
+			not lume.any(groups, function(x) return lume.find(x, bob,id) end) then
+				hasBobjects = true
+				if bob.pos.x < group.x1 then
+					group.x1 = bob.pos.x
+				end
+				if bob.pos.y < group.y1 then
+					group.y1 = bob.pos.y
+				end
+				if bob.pos.x > group.x2 then
+					group.x2 = bob.pos.x + bob:getWidth() + padding
+				end
+				if bob.pos.y > group.y2 then
+					group.y2 = bob.pos.y + bob:getHeight() + padding
+				end
 
-			table.insert(group.ids, bob.id)
+				table.insert(group.ids, bob.id)
+			end
+		end
+
+		if hasBobjects then
+			group.x1 = group.x1 - padding
+			group.y1 = group.y1 - padding
+			group.x2 = group.x2 + padding
+			group.y2 = group.y2 + padding
+
+			lume.push(groups, group)
 		end
 	end
 
-	if hasBobjects then
-		group.x1 = group.x1 - padding
-		group.y1 = group.y1 - padding
-		group.x2 = group.x2 + padding
-		group.y2 = group.y2 + padding
-
-		lume.push(groups, group)
-	end	
+	if SAVECATCHMODE then
+		local success, result = pcall(addgroupfunc)
+		if not success then
+			log.error('adding group failed: '..tostring(result))
+		end
+	end
 end
 
 
