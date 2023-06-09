@@ -13,6 +13,7 @@ local messages = require 'lib.messages'
 local classes = require 'classes'
 local json = require 'lib.json'
 local Camera = require 'lib.camera'
+local vgui = require('lib.vgui'):new()
 log.info'Done.'
 
 log.info'Loading Font...'
@@ -29,6 +30,24 @@ log.info('Done. Took ' .. formatTime(love.timer.getTime() - startTime))
 log.info'Initializing variables...'
 local SAVECATCHMODE = false
 if SAVECATCHMODE then log.info'SAVE CATCH MODE ENABLED' end
+
+local settings = {
+	showGrid = true,
+	useSmoothCubic = false,
+	showPinIDs = false,
+	showPinStates = false,
+	showGateIDs = false,
+	showPlotter = false,
+	showHelp = false,
+	showDebug = false,
+	showTelemetry = false,
+	showFPS = true,
+	fullscreen = false,
+
+	deleteWithX = false,
+	-- showFPS = false
+	-- VSync = false
+}
 
 -- worker
 local gates = {}
@@ -71,7 +90,7 @@ local menuX, menuTargetX, menuIsSliding = 0, 0, false
 local boardslistui = {
 	startx = 20,
 	starty = 150,
-	padding = 10,
+	padding = 7,
 	spacing = 10,
 	rounding = 5,
 	colors = {
@@ -82,13 +101,20 @@ local boardslistui = {
 	}
 }
 
-boardslistui.createbutton = { w=font:getWidth('+ Create') + boardslistui.padding*2, h=font:getHeight() + boardslistui.padding*2, text='+ Create' }
-boardslistui.renamebutton = { w=font:getWidth('Rename')   + boardslistui.padding*2, h=font:getHeight() + boardslistui.padding*2, text='Rename'   }
-boardslistui.deletebutton = { w=font:getWidth('Delete')   + boardslistui.padding*2, h=font:getHeight() + boardslistui.padding*2, text='Delete'   }
--- boardslistui.boarditempreset = { x=100, y=0, padw=0, padh=0, name='NAME', id=0, filesize=0, lastmodified=0, created=0 }
+boardslistui.createbutton = { text='Create', w=font:getWidth('Create') + boardslistui.padding*2, h=font:getHeight() + boardslistui.padding*2 }
+boardslistui.renamebutton = { text='Rename'  , w=font:getWidth('Rename')   + boardslistui.padding*2, h=font:getHeight() + boardslistui.padding*2, hidewhennotneeded=true }
+boardslistui.exportbutton = { text='Export'  , w=font:getWidth('Export')   + boardslistui.padding*2, h=font:getHeight() + boardslistui.padding*2, hidewhennotneeded=true }
+boardslistui.deletebutton = { text='Delete'  , w=font:getWidth('Delete')   + boardslistui.padding*2, h=font:getHeight() + boardslistui.padding*2, hidewhennotneeded=true }
 boardslistui.boarditemheight = namefont:getHeight() + boardslistui.padding*2
 
 boardslist = {}
+boardslistgui = {}
+boardslistgui.createbutton = {}
+boardslistgui.renamebutton = {}
+boardslistgui.renamebutton = {}
+boardslistgui.deletebutton = {}
+boardslistgui.createtextbox = {}
+
 
 local telemetryInterval, telemetryIntervalLast = 500, love.timer.getTime()
 local telemetry, telemetryShow = {}, {}
@@ -96,26 +122,6 @@ local maxFPSRecorded = 60
 
 local computeThread
 local computeThreadUPS, computeThreadMaxUPS = 0, 10000
-
-local style
-
-local settings = {
-	showGrid = true,
-	useSmoothCubic = false,
-	showPinIDs = false,
-	showPinStates = false,
-	showGateIDs = false,
-	showPlotter = false,
-	showHelp = false,
-	showDebug = false,
-	showTelemetry = false,
-	showFPS = true,
-	fullscreen = false,
-
-	deleteWithX = false,
-	-- showFPS = false
-	-- VSync = false
-}
 
 local camera
 
@@ -132,11 +138,30 @@ log.info'Done.'
 function love.load()
 	log.info('Loading main Program...')
 	love.graphics.setBackgroundColor(0.11, 0.11, 0.11)
+	love.keyboard.setKeyRepeat(true)
 	messages.x = 10
 	messages.y = 40
 
-    -- computeThread = love.thread.newThread("computeThread.lua")
-	-- computeThread:start(computeThreadMaxUPS)
+	boardslistgui.createbutton = vgui:button(boardslistui.createbutton.text, { x=boardslistui.startx, y=boardslistui.starty, w=boardslistui.createbutton.w, h=boardslistui.createbutton.h })
+	boardslistgui.createbutton.press = function() print('Creating a New Board') end
+	-- prinspect(vgui)
+
+	boardslistgui.renamebutton = vgui:button(boardslistui.renamebutton.text, { x=boardslistui.startx, y=boardslistui.starty, w=boardslistui.renamebutton.w, h=boardslistui.renamebutton.h })
+	boardslistgui.renamebutton.press = function() print('Renaming Board') end
+
+	boardslistgui.exportbutton = vgui:button(boardslistui.exportbutton.text, { x=boardslistui.startx, y=boardslistui.starty, w=boardslistui.exportbutton.w, h=boardslistui.exportbutton.h })
+	boardslistgui.exportbutton.press = function() print('Exporting Board') end
+
+	boardslistgui.deletebutton = vgui:coloredbutton(
+		boardslistui.deletebutton.text
+		,{ x=boardslistui.startx, y=boardslistui.starty, w=boardslistui.deletebutton.w, h=boardslistui.deletebutton.h }
+		,{ 0.8, 0.2, 0.2 }
+	)
+	boardslistgui.deletebutton.press = function() print('Deleting Board') end
+
+
+	boardslistgui.createtextbox = vgui:input('', { x=boardslistui.startx+boardslistui.createbutton.w + boardslistui.spacing, y=boardslistui.starty, w=boardslistui.createbutton.w*4, h=boardslistui.createbutton.h })
+	boardslistgui.createtextbox.done = function() print('Created a New Board: '..boardslistgui.createtextbox.value) end
 
 	menuTransform = love.math.newTransform(0,0,0,1)
     boardTransform = love.math.newTransform(0,0,0,1)
@@ -144,13 +169,12 @@ function love.load()
 	camera = Camera.newSmoothWithTransform(boardTransform, 40, 0.5, 5)
 
 	-- loadBoard()
-	addDefaults()
 
 	lume.push(boardslist, { name='Davids Baord fsr', id=1, size=45000, lastmodified='07.06.23', created='05.06.23' })
 	lume.push(boardslist, { name='Just a Test you see', id=2, size=0, lastmodified='07.06.23', created='07.06.23' })
 	lume.push(boardslist, { name='HS3JN9-NY83OS-H9S2-HSK83GHS937', id=3, size='10', lastmodified='07.06.23', created='07.06.23' })
 
-	-- local done = love.thread.getChannel("setup"):supply(true)
+	vgui:updatepositions()
 	log.info('Done.')
 end
 
@@ -158,6 +182,7 @@ end
 -- #                           LOVE UPDATE                         #
 -- #################################################################
 function love.update(dt)
+	vgui:update(dt)
 	-- slide animation for menus
 	currentMenu = lume.clamp(currentMenu, 0, 4)
 	menuTargetX = love.graphics.getWidth() * currentMenu
@@ -228,17 +253,27 @@ function love.draw()
 	love.graphics.translate(love.graphics.getWidth(), 0)
 	-- ##############################[  BOARDS LIST  ]##############################
 	if shouldShowMenu(menus.list) then
+		mx,my = camera:getScreenPos(love.mouse.getPosition())
 		love.graphics.setColor(1, 1, 1)
 		love.graphics.print("Boards:", bigfont, 10, 10)
 		
-		local create = boardslistui.createbutton
-		love.graphics.setColor(boardslistui.colors.background)
-		love.graphics.rectangle("fill", boardslistui.startx, boardslistui.starty, create.w, create.h, boardslistui.rounding)
-		love.graphics.setColor(boardslistui.colors.border)
-		love.graphics.rectangle("line", boardslistui.startx, boardslistui.starty, create.w, create.h, boardslistui.rounding)
-		love.graphics.setColor(boardslistui.colors.text)
-		love.graphics.print(create.text, boardslistui.startx + boardslistui.padding, boardslistui.starty + boardslistui.padding)
+		-- local create = boardslistui.createbutton
+		-- love.graphics.setColor(boardslistui.colors.background)
+		-- love.graphics.rectangle("fill", boardslistui.startx, boardslistui.starty, create.w, create.h, boardslistui.rounding)
+		-- love.graphics.setColor(boardslistui.colors.border)
+		-- love.graphics.rectangle("line", boardslistui.startx, boardslistui.starty, create.w, create.h, boardslistui.rounding)
+		-- love.graphics.setColor(boardslistui.colors.text)
+		-- love.graphics.print(create.text, boardslistui.startx + boardslistui.padding, boardslistui.starty + boardslistui.padding)
 		
+		boardslistgui.renamebutton.absx = 0
+		boardslistgui.renamebutton.absy = -1000
+		boardslistgui.exportbutton.absx = 0
+		boardslistgui.exportbutton.absy = -1000
+		boardslistgui.deletebutton.absx = 0
+		boardslistgui.deletebutton.absy = -1000
+
+
+		love.graphics.setLineWidth(0.5)
 		local w = love.graphics.getWidth() - boardslistui.startx - boardslistui.padding
 		local h = namefont:getHeight() + font:getHeight() + boardslistui.padding*3
 		for i,board in ipairs(boardslist) do
@@ -262,7 +297,20 @@ function love.draw()
 			love.graphics.print(lume.format('Size: {size}KB', board),                x + padding + idlength, y+padding + namefont:getHeight()+padding)
 			love.graphics.print(lume.format('Last Modified: {lastmodified}', board), x + padding + idlength + sizelength, y+padding + namefont:getHeight()+padding)
 			love.graphics.print(lume.format('Created: {created}', board),            x + padding + idlength + sizelength + modlength, y+padding + namefont:getHeight()+padding)
+
+			if mx>x and mx<x+w and my>y and my<y+h then				
+				boardslistgui.renamebutton.absx = x + w - boardslistui.renamebutton.w*3 - padding - boardslistui.spacing*2
+				boardslistgui.renamebutton.absy = y + padding
+				
+				boardslistgui.exportbutton.absx = x + w - boardslistui.exportbutton.w*2 - padding - boardslistui.spacing
+				boardslistgui.exportbutton.absy = y + padding
+
+				boardslistgui.deletebutton.absx = x + w - boardslistui.deletebutton.w - padding
+				boardslistgui.deletebutton.absy = y + padding
+			end
 		end
+
+		vgui:draw()
 	end
 
 	love.graphics.translate(love.graphics.getWidth(), 0)
@@ -467,8 +515,6 @@ function love.draw()
 	end
 	love.graphics.pop()
 
-	-- love.graphics.pop()
-
 	-- OTHERS
 	if SAVECATCHMODE then
 		love.graphics.print({{0.6, 0.89, 0.63}, 'SAVE CATCH MODE ENABLED'}, love.graphics.getWidth()-(font:getWidth('SAVE CATCH MODE ENABLED'))-10, 10)
@@ -487,6 +533,7 @@ end
 -- #                       LOVE MOUSE PRESSED                      #
 -- #################################################################
 function love.mousepressed(x, y, button)
+	vgui:mousepress(x, y, button)
 	-- ************************************[ BOARD ]************************************ --
 	if currentMenu == menus.board then
 		x,y = camera:getScreenPos( x,y )
@@ -571,6 +618,7 @@ end
 -- #                       LOVE MOUSE RELEASED                     #
 -- #################################################################
 function love.mousereleased(x, y, button)
+	vgui:mouserelease(x, y, button)
 	x, y = camera:getScreenPos(x, y)
 	if button == 1 and not dontSelect then
 		isSelecting = false
@@ -707,6 +755,7 @@ end
 -- #################################################################
 
 function love.keypressed(key, scancode, isrepeat)
+	vgui:keypress(key)
 	if key == 'insert' then
 		SAVECATCHMODE = not SAVECATCHMODE
 		log.warn('SAVECATCHMODE: '..tostring(SAVECATCHMODE))
@@ -801,7 +850,7 @@ function saveKeyPressed(key, scancode, isrepeat)
 					end
 					if data.connections then
 						for i, connection in ipairs(data.connections) do
-							addConnection(connection)
+							addConnection({ outputpin=getPinByID(connection.outputpin.id), inputpin=getPinByID(connection.inputpin.id) })
 						end
 					end
 					if data.groups then
@@ -945,7 +994,12 @@ function devKeyPressed(key, scancode, isrepeat)
 						addPeripheral(loadPERIPHERAL(peripheraldata))
 					end
 					for i, connection in ipairs(data.connections) do
-						lume.push(connections, connection)
+						addConnection({ outputpin=getPinByID(connection.outputpin.id), inputpin=getPinByID(connection.inputpin.id) })
+					end
+					if data.groups then
+						for i, group in ipairs(data.groups) do
+							lume.push(groups, group)
+						end
 					end
 					messages.add({{0.6, 0.89, 0.63},"Board Data loaded from Clipboard!"})
 				end
@@ -1011,8 +1065,9 @@ function devKeyPressed(key, scancode, isrepeat)
 	end
 end
 
-
-
+function love.textinput(key)
+	vgui:textinput(key)
+end
 --==============================================[ CUSTOM FUNCTIONS ]==============================================--
 
 function shouldShowMenu(menu)
