@@ -17,7 +17,7 @@ log.info'Done.'
 
 log.info'Loading Font...'
 local font = love.graphics.newFont('fonts/main.ttf', 20)
-local namefont = love.graphics.newFont('fonts/main.ttf', 30)
+local namefont = love.graphics.newFont('fonts/main.ttf', 35)
 local bigfont = love.graphics.newFont('fonts/main.ttf', 80)
 local hugefont = love.graphics.newFont('fonts/main.ttf', 120)
 font:setFilter('nearest', 'nearest', 8)
@@ -146,8 +146,9 @@ function love.load()
 	-- loadBoard()
 	addDefaults()
 
-	lume.push(boardslist, { name='Board 1', id=1, filesize=0, lastmodified=0, created=0 })
-	lume.push(boardslist, { name='Board 2', id=2, filesize=0, lastmodified=0, created=0 })
+	lume.push(boardslist, { name='Davids Baord fsr', id=1, size=45000, lastmodified='07.06.23', created='05.06.23' })
+	lume.push(boardslist, { name='Just a Test you see', id=2, size=0, lastmodified='07.06.23', created='07.06.23' })
+	lume.push(boardslist, { name='HS3JN9-NY83OS-H9S2-HSK83GHS937', id=3, size='10', lastmodified='07.06.23', created='07.06.23' })
 
 	-- local done = love.thread.getChannel("setup"):supply(true)
 	log.info('Done.')
@@ -237,7 +238,6 @@ function love.draw()
 		love.graphics.rectangle("line", boardslistui.startx, boardslistui.starty, create.w, create.h, boardslistui.rounding)
 		love.graphics.setColor(boardslistui.colors.text)
 		love.graphics.print(create.text, boardslistui.startx + boardslistui.padding, boardslistui.starty + boardslistui.padding)
-
 		
 		local w = love.graphics.getWidth() - boardslistui.startx - boardslistui.padding
 		local h = namefont:getHeight() + font:getHeight() + boardslistui.padding*3
@@ -255,7 +255,13 @@ function love.draw()
 			love.graphics.rectangle("line", x, y, w, h, rounding)
 			love.graphics.setColor(boardslistui.colors.text)
 			love.graphics.print(text, namefont, x + padding, y + padding)
-			love.graphics.print('ID: #1   Size: 5KB   Last Modified: XX.XX.XX   Created: XX.XX.XX', x + padding, y+padding + namefont:getHeight()+padding)
+			local idlength = font:getWidth('ID: #00') + padding*4
+			local sizelength = font:getWidth('Size: 00000KB') + padding*4
+			local modlength = font:getWidth('Last Modified: 00.00.00') + padding*4
+			love.graphics.print(lume.format('ID: #{id}', board),                     x + padding, y+padding + namefont:getHeight()+padding)
+			love.graphics.print(lume.format('Size: {size}KB', board),                x + padding + idlength, y+padding + namefont:getHeight()+padding)
+			love.graphics.print(lume.format('Last Modified: {lastmodified}', board), x + padding + idlength + sizelength, y+padding + namefont:getHeight()+padding)
+			love.graphics.print(lume.format('Created: {created}', board),            x + padding + idlength + sizelength + modlength, y+padding + namefont:getHeight()+padding)
 		end
 	end
 
@@ -1302,7 +1308,7 @@ function loadBoard()
 			end
 			if data.connections then
 				for i, connection in ipairs(data.connections) do
-					addConnection(connection)
+					addConnection({ outputpin=getPinByID(connection.outputpin.id), inputpin=getPinByID(connection.inputpin.id) })
 				end
 			end
 			if data.groups then
