@@ -1,12 +1,13 @@
 -- ==============================================================[ IMPORTS ]===================================================================--
-print'\nVersion: 1.8.2'
+print'\nVersion: 1.8.3'
 print'Starting...'
+
 local startTime = love.timer.getTime()
 local log = require 'lib.log'
-log.level = 'info'
+log.level = 'debug'
 require 'fancyerror'
 
-log.info'Loading libraries...'
+log.info'Loading Libraries...'
 require 'lib.noahsutils'
 local lume = require 'lib.lume'
 local messages = require 'lib.messages'
@@ -14,21 +15,21 @@ local classes = require 'classes'
 local json = require 'lib.json'
 local Camera = require 'lib.camera'
 local vgui = require('lib.vgui'):new()
-log.info'Done.'
 
-log.info'Loading Font...'
+log.info'Loading Fonts...'
 local font = love.graphics.newFont('fonts/main.ttf', 20)
 local namefont = love.graphics.newFont('fonts/main.ttf', 35)
 local bigfont = love.graphics.newFont('fonts/main.ttf', 80)
 local hugefont = love.graphics.newFont('fonts/main.ttf', 120)
 font:setFilter('nearest', 'nearest', 8)
 love.graphics.setFont(font)
+
 log.info('Done. Took ' .. formatTime(love.timer.getTime() - startTime))
 
 -- =============================================================[ VARIABLES ]==================================================================--
 
 log.info'Initializing variables...'
-local SAVECATCHMODE = false
+local SAVECATCHMODE = true
 if SAVECATCHMODE then log.info'SAVE CATCH MODE ENABLED' end
 
 local settings = {
@@ -45,20 +46,15 @@ local settings = {
 	fullscreen = false,
 
 	deleteWithX = false,
-	-- showFPS = false
-	-- VSync = false
 }
 
--- worker
 local gates = {}
 local peripherals = {}
 local connections = {}
 local groups = {}
 
--- idk
 local selectedPinID = 0
 
--- main
 local isDraggingObject = false
 local isDraggingSelection = false
 local isDraggingGroup = false
@@ -73,10 +69,8 @@ local dontSelect = false
 local plotterID = 0
 local plotterData = {}
 
--- main?
 local currentBoard = 1
 
--- main
 local menus = {
 	about = 0,
 	settings = 1,
@@ -86,6 +80,7 @@ local menus = {
 }
 local currentMenu = menus.list
 local menuX, menuTargetX, menuIsSliding = 0, 0, false
+local dontescape = false
 
 local boardslistui = {
 	startx = 20,
@@ -95,16 +90,17 @@ local boardslistui = {
 	rounding = 5,
 	colors = {
 		background = { 0.15, 0.15, 0.15 },
+		hovered = { 0.18, 0.18, 0.18 },
 		border = { 0.25, 0.25, 0.25 },
 		hover = { 0.3, 0.3, 0.3 },
 		text = { 1, 1, 1 },
 	}
 }
 
-boardslistui.createbutton = { text='Create', w=font:getWidth('Create') + boardslistui.padding*2, h=font:getHeight() + boardslistui.padding*2 }
-boardslistui.renamebutton = { text='Rename'  , w=font:getWidth('Rename')   + boardslistui.padding*2, h=font:getHeight() + boardslistui.padding*2, hidewhennotneeded=true }
-boardslistui.exportbutton = { text='Export'  , w=font:getWidth('Export')   + boardslistui.padding*2, h=font:getHeight() + boardslistui.padding*2, hidewhennotneeded=true }
-boardslistui.deletebutton = { text='Delete'  , w=font:getWidth('Delete')   + boardslistui.padding*2, h=font:getHeight() + boardslistui.padding*2, hidewhennotneeded=true }
+boardslistui.createbutton = { text='Create', w=font:getWidth'Create' + boardslistui.padding*2, h=font:getHeight() + boardslistui.padding*2 }
+boardslistui.renamebutton = { text='Rename', w=font:getWidth'Rename' + boardslistui.padding*2, h=font:getHeight() + boardslistui.padding*2, hidewhennotneeded=true }
+boardslistui.exportbutton = { text='Export', w=font:getWidth'Export' + boardslistui.padding*2, h=font:getHeight() + boardslistui.padding*2, hidewhennotneeded=true }
+boardslistui.deletebutton = { text='Delete', w=font:getWidth'Delete' + boardslistui.padding*2, h=font:getHeight() + boardslistui.padding*2, hidewhennotneeded=true }
 boardslistui.boarditemheight = namefont:getHeight() + boardslistui.padding*2
 
 boardslist = {}
@@ -115,13 +111,11 @@ boardslistgui.renamebutton = {}
 boardslistgui.deletebutton = {}
 boardslistgui.createtextbox = {}
 
+local ignoreKeyInputs = false
 
 local telemetryInterval, telemetryIntervalLast = 500, love.timer.getTime()
 local telemetry, telemetryShow = {}, {}
 local maxFPSRecorded = 60
-
-local computeThread
-local computeThreadUPS, computeThreadMaxUPS = 0, 10000
 
 local camera
 
@@ -143,8 +137,7 @@ function love.load()
 	messages.y = 40
 
 	boardslistgui.createbutton = vgui:button(boardslistui.createbutton.text, { x=boardslistui.startx, y=boardslistui.starty, w=boardslistui.createbutton.w, h=boardslistui.createbutton.h })
-	boardslistgui.createbutton.press = function() print('Creating a New Board') end
-	-- prinspect(vgui)
+	boardslistgui.createbutton.press = createBoardCallback
 
 	boardslistgui.renamebutton = vgui:button(boardslistui.renamebutton.text, { x=boardslistui.startx, y=boardslistui.starty, w=boardslistui.renamebutton.w, h=boardslistui.renamebutton.h })
 	boardslistgui.renamebutton.press = function() print('Renaming Board') end
@@ -161,18 +154,23 @@ function love.load()
 
 
 	boardslistgui.createtextbox = vgui:input('', { x=boardslistui.startx+boardslistui.createbutton.w + boardslistui.spacing, y=boardslistui.starty, w=boardslistui.createbutton.w*4, h=boardslistui.createbutton.h })
-	boardslistgui.createtextbox.done = function() print('Created a New Board: '..boardslistgui.createtextbox.value) end
+	boardslistgui.createtextbox.done = createBoardCallback
+	boardslistgui.createtextbox.click = function()
+		log.debug'Writing to textbox'
+		ignoreKeyInputs = true
+		boardslistgui.createtextbox:setfocus(true)
+	end
 
 	menuTransform = love.math.newTransform(0,0,0,1)
     boardTransform = love.math.newTransform(0,0,0,1)
 
 	camera = Camera.newSmoothWithTransform(boardTransform, 40, 0.5, 5)
 
-	-- loadBoard()
+	loadBoard()
 
-	lume.push(boardslist, { name='Davids Baord fsr', id=1, size=45000, lastmodified='07.06.23', created='05.06.23' })
-	lume.push(boardslist, { name='Just a Test you see', id=2, size=0, lastmodified='07.06.23', created='07.06.23' })
-	lume.push(boardslist, { name='HS3JN9-NY83OS-H9S2-HSK83GHS937', id=3, size='10', lastmodified='07.06.23', created='07.06.23' })
+	lume.push(boardslist, { name='Davids Baord fsr', id=1, size=45000, lastmodified='07.06.23'})
+	lume.push(boardslist, { name='Just a Test you see', id=2, size=0, lastmodified='07.06.23'})
+	lume.push(boardslist, { name='HS3JN9-NY83OS-H9S2-HSK83GHS937', id=3, size='10', lastmodified='07.06.23'})
 
 	vgui:updatepositions()
 	log.info('Done.')
@@ -218,6 +216,8 @@ function love.update(dt)
 
 	-- OTHERS
 
+	ignoreKeyInputs = vgui.focuselement == boardslistgui.createtextbox
+
 	if love.timer.getFPS() > maxFPSRecorded then
 		maxFPSRecorded = love.timer.getFPS()
 	end
@@ -257,21 +257,12 @@ function love.draw()
 		love.graphics.setColor(1, 1, 1)
 		love.graphics.print("Boards:", bigfont, 10, 10)
 		
-		-- local create = boardslistui.createbutton
-		-- love.graphics.setColor(boardslistui.colors.background)
-		-- love.graphics.rectangle("fill", boardslistui.startx, boardslistui.starty, create.w, create.h, boardslistui.rounding)
-		-- love.graphics.setColor(boardslistui.colors.border)
-		-- love.graphics.rectangle("line", boardslistui.startx, boardslistui.starty, create.w, create.h, boardslistui.rounding)
-		-- love.graphics.setColor(boardslistui.colors.text)
-		-- love.graphics.print(create.text, boardslistui.startx + boardslistui.padding, boardslistui.starty + boardslistui.padding)
-		
 		boardslistgui.renamebutton.absx = 0
 		boardslistgui.renamebutton.absy = -1000
 		boardslistgui.exportbutton.absx = 0
 		boardslistgui.exportbutton.absy = -1000
 		boardslistgui.deletebutton.absx = 0
 		boardslistgui.deletebutton.absy = -1000
-
 
 		love.graphics.setLineWidth(0.5)
 		local w = love.graphics.getWidth() - boardslistui.startx - boardslistui.padding
@@ -282,9 +273,10 @@ function love.draw()
 			local rounding = boardslistui.rounding
 			local padding = boardslistui.padding
 			local text = board.name
-			local selected = board.selected
+			local hovered = mx>x and mx<x+w and my>y and my<y+h
 
-			love.graphics.setColor(boardslistui.colors.background)
+			if hovered then love.graphics.setColor(boardslistui.colors.hovered)
+			else love.graphics.setColor(boardslistui.colors.background) end			
 			love.graphics.rectangle("fill", x, y, w, h, rounding)
 			love.graphics.setColor(boardslistui.colors.border)
 			love.graphics.rectangle("line", x, y, w, h, rounding)
@@ -292,26 +284,22 @@ function love.draw()
 			love.graphics.print(text, namefont, x + padding, y + padding)
 			local idlength = font:getWidth('ID: #00') + padding*4
 			local sizelength = font:getWidth('Size: 00000KB') + padding*4
-			local modlength = font:getWidth('Last Modified: 00.00.00') + padding*4
 			love.graphics.print(lume.format('ID: #{id}', board),                     x + padding, y+padding + namefont:getHeight()+padding)
 			love.graphics.print(lume.format('Size: {size}KB', board),                x + padding + idlength, y+padding + namefont:getHeight()+padding)
 			love.graphics.print(lume.format('Last Modified: {lastmodified}', board), x + padding + idlength + sizelength, y+padding + namefont:getHeight()+padding)
-			love.graphics.print(lume.format('Created: {created}', board),            x + padding + idlength + sizelength + modlength, y+padding + namefont:getHeight()+padding)
 
-			if mx>x and mx<x+w and my>y and my<y+h then				
+			if hovered then				
 				boardslistgui.renamebutton.absx = x + w - boardslistui.renamebutton.w*3 - padding - boardslistui.spacing*2
-				boardslistgui.renamebutton.absy = y + padding
-				
+				boardslistgui.renamebutton.absy = y + padding				
 				boardslistgui.exportbutton.absx = x + w - boardslistui.exportbutton.w*2 - padding - boardslistui.spacing
 				boardslistgui.exportbutton.absy = y + padding
-
 				boardslistgui.deletebutton.absx = x + w - boardslistui.deletebutton.w - padding
 				boardslistgui.deletebutton.absy = y + padding
 			end
 		end
 
-		vgui:draw()
 	end
+	vgui:draw()
 
 	love.graphics.translate(love.graphics.getWidth(), 0)
 	-- ##############################[  BOARD  ]##############################
@@ -347,8 +335,6 @@ function love.draw()
 				love.graphics.rectangle("line", selection.x1, selection.y1, selection.x2 - selection.x1, selection.y2 - selection.y1, 2)
 			end
 			
-			-- GET FROM COMPUTE THREAD
-
 			-- connections
 			time = love.timer.getTime()
 			love.graphics.setColor(0, 0.71, 0.48)
@@ -506,10 +492,12 @@ function love.draw()
 		end
 		
 		love.graphics.setColor(1, 1, 1)
-		love.graphics.print(("FPS: %s | UPS: %s | %.1f%% Lag | Current Board: %d (Press [F1] for Help)"):format(tostring(love.timer.getFPS()), nfc(computeThreadUPS), (100-love.timer.getFPS()/maxFPSRecorded*100), currentBoard), 10, 10)
-		if isDraggingGroup or isDraggingObject or isDraggingSelection then
-			love.graphics.print(isDraggingSelection and "Dragging Selection" or (isDraggingGroup and "Dragging Group ID: "..tostring(draggedGroupID) or (isDraggingObject and "Dragging Object ID: "..tostring(draggedObjectID) or "")), 10, 70)
+		if settings.showFPS then
+			love.graphics.print(("FPS: %s | %.1f%% Lag | Current Board: %d (Press [F1] for Help)"):format(tostring(love.timer.getFPS()), (100-love.timer.getFPS()/maxFPSRecorded*100), currentBoard), 10, 10)
 		end
+		-- if isDraggingGroup or isDraggingObject or isDraggingSelection then
+		-- 	love.graphics.print(isDraggingSelection and "Dragging Selection" or (isDraggingGroup and "Dragging Group ID: "..tostring(draggedGroupID) or (isDraggingObject and "Dragging Object ID: "..tostring(draggedObjectID) or "")), 10, 70)
+		-- end
 			
 		messages.draw()
 	end
@@ -519,6 +507,8 @@ function love.draw()
 	if SAVECATCHMODE then
 		love.graphics.print({{0.6, 0.89, 0.63}, 'SAVE CATCH MODE ENABLED'}, love.graphics.getWidth()-(font:getWidth('SAVE CATCH MODE ENABLED'))-10, 10)
 	end
+	love.graphics.print({{0.98, 0.77, 0.42}, 'IgnoreKeyInputs: '..tostring(ignoreKeyInputs)}, love.graphics.getWidth()-(font:getWidth('IgnoreKeyInputs: '..tostring(ignoreKeyInputs)))-10, 30)
+
 end
 
 function love.quit()
@@ -761,19 +751,22 @@ function love.keypressed(key, scancode, isrepeat)
 		log.warn('SAVECATCHMODE: '..tostring(SAVECATCHMODE))
 	end
 
-	if SAVECATCHMODE then
-		saveKeyPressed(key, scancode, isrepeat)
-	else
-		devKeyPressed(key, scancode, isrepeat)
+	if not ignoreKeyInputs then
+		if SAVECATCHMODE then saveKeyPressed(key)
+		else devKeyPressed(key) end
 	end
 end
 
-function saveKeyPressed(key, scancode, isrepeat)
+function saveKeyPressed(key)
 	-- ANY MENU
-	whenKeyPressed(key, 'escape', nil, nil, function()
+	whenKeyPressed(key, 'escape', 'none', not dontescape, function()
 		if currentMenu>menus.title then currentMenu=currentMenu-1
 		elseif currentMenu<menus.title then currentMenu=currentMenu+1
 		end
+	end)
+
+	whenKeyPressed(key, 'f', 'none', not ignoreKeyInputs, function()
+		updateBoardsList()
 	end)
 
 	if key == 'left' and love.keyboard.isDown('lctrl') then
@@ -783,12 +776,12 @@ function saveKeyPressed(key, scancode, isrepeat)
 		currentMenu=currentMenu+1
 	end
 
-	whenKeyPressed(key, 'f11', nil, nil, function()
+	whenKeyPressed(key, 'f11', 'none', nil, function()
 		settings.fullscreen = not settings.fullscreen
 		love.window.setFullscreen(settings.fullscreen, "exclusive")
 	end)
 
-	whenKeyPressed(key, 'f9', nil, nil, function()
+	whenKeyPressed(key, 'f9', 'none', nil, function()
 		for i=1,10 do 
 			love.filesystem.write(
 				string.format("board%d.json", i),
@@ -805,12 +798,12 @@ function saveKeyPressed(key, scancode, isrepeat)
 	-- BOARD MENU
 	local mx,my = camera:getScreenPos(love.mouse.getPosition())
 
-	whenKeyPressed(key, 'f1', nil, currentMenu==menus.board, function() settings.showHelp = not settings.showHelp end)
-	whenKeyPressed(key, 'f2', nil, currentMenu==menus.board, function() settings.showDebug = not settings.showDebug end)
-	whenKeyPressed(key, 'f3', nil, currentMenu==menus.board, function() settings.showFPS = not settings.showFPS end)
-	whenKeyPressed(key, 'f4', nil, currentMenu==menus.board, function() settings.showGrid = not settings.showGrid end)
+	whenKeyPressed(key, 'f1', 'none', currentMenu==menus.board, function() settings.showHelp = not settings.showHelp end)
+	whenKeyPressed(key, 'f2', 'none', currentMenu==menus.board, function() settings.showDebug = not settings.showDebug end)
+	whenKeyPressed(key, 'f3', 'none', currentMenu==menus.board, function() settings.showFPS = not settings.showFPS end)
+	whenKeyPressed(key, 'f4', 'none', currentMenu==menus.board, function() settings.showGrid = not settings.showGrid end)
 
-	whenKeyPressed(key, 'i', nil, currentMenu==menus.board, function()
+	whenKeyPressed(key, 'i', 'none', currentMenu==menus.board, function()
 		settings.useSmoothCubic = not settings.useSmoothCubic
 		messages.add('Use Smooth Cubic: '..tostring(settings.useSmoothCubic))
 	end)
@@ -868,13 +861,13 @@ function saveKeyPressed(key, scancode, isrepeat)
 		love.event.quit()
 	end)
 
-	whenKeyPressed(key, 'g', nil, currentMenu==menus.board, function()
+	whenKeyPressed(key, 'g', 'none', currentMenu==menus.board, function()
 		addGroup()
 		selection = {x1=0, y1=0, x2=0, y2=0, ids={}}
 		messages.add({{0.71, 0.75, 0.86},"Group created!"})
 	end)
 
-	whenKeyPressed(key, 'delete', nil, currentMenu==menus.board, function()
+	whenKeyPressed(key, 'delete', 'none', currentMenu==menus.board, function()
 		if selectedPinID ~= 0 then --------------------- First Pin of new Connection selected
 			local pin = getPinByID(selectedPinID)
 			if pin then pin.isConnected = false end
@@ -905,24 +898,24 @@ function saveKeyPressed(key, scancode, isrepeat)
 		loadBoard()
 	end)
 
-	whenKeyPressed(key, '1', nil, currentMenu==menus.board, function() addPeripheral(classes.INPUT (mx - classes.PERIPHERAL:getWidth()/2, my - classes.PERIPHERAL:getHeight()/2)) end)
-	whenKeyPressed(key, '2', nil, currentMenu==menus.board, function() addPeripheral(classes.OUTPUT(mx - classes.PERIPHERAL:getWidth()/2, my - classes.PERIPHERAL:getHeight()/2)) end)
-	whenKeyPressed(key, '3', nil, currentMenu==menus.board, function() addPeripheral(classes.CLOCK (mx - classes.PERIPHERAL:getWidth()/2, my - classes.PERIPHERAL:getHeight()/2)) end)
-	whenKeyPressed(key, '4', nil, currentMenu==menus.board, function() addPeripheral(classes.BUFFER(mx - classes.PERIPHERAL:getWidth()/2, my - classes.PERIPHERAL:getHeight()/2)) end)
-	whenKeyPressed(key, '5', nil, currentMenu==menus.board, function() addGate(classes.AND (mx - classes.GATE:getWidth()/2, my - classes.GATE:getHeight(2)/2)) end)
-	whenKeyPressed(key, '6', nil, currentMenu==menus.board, function() addGate(classes.OR  (mx - classes.GATE:getWidth()/2, my - classes.GATE:getHeight(2)/2)) end)
-	whenKeyPressed(key, '7', nil, currentMenu==menus.board, function() addGate(classes.NOT (mx - classes.GATE:getWidth()/2, my - classes.GATE:getHeight(1)/2)) end)
+	whenKeyPressed(key, '1', 'none', currentMenu==menus.board, function() addPeripheral(classes.INPUT (mx - classes.PERIPHERAL:getWidth()/2, my - classes.PERIPHERAL:getHeight()/2)) end)
+	whenKeyPressed(key, '2', 'none', currentMenu==menus.board, function() addPeripheral(classes.OUTPUT(mx - classes.PERIPHERAL:getWidth()/2, my - classes.PERIPHERAL:getHeight()/2)) end)
+	whenKeyPressed(key, '3', 'none', currentMenu==menus.board, function() addPeripheral(classes.CLOCK (mx - classes.PERIPHERAL:getWidth()/2, my - classes.PERIPHERAL:getHeight()/2)) end)
+	whenKeyPressed(key, '4', 'none', currentMenu==menus.board, function() addPeripheral(classes.BUFFER(mx - classes.PERIPHERAL:getWidth()/2, my - classes.PERIPHERAL:getHeight()/2)) end)
+	whenKeyPressed(key, '5', 'none', currentMenu==menus.board, function() addGate(classes.AND (mx - classes.GATE:getWidth()/2, my - classes.GATE:getHeight(2)/2)) end)
+	whenKeyPressed(key, '6', 'none', currentMenu==menus.board, function() addGate(classes.OR  (mx - classes.GATE:getWidth()/2, my - classes.GATE:getHeight(2)/2)) end)
+	whenKeyPressed(key, '7', 'none', currentMenu==menus.board, function() addGate(classes.NOT (mx - classes.GATE:getWidth()/2, my - classes.GATE:getHeight(1)/2)) end)
 
 
-	whenKeyPressed(key, 'sapce', nil, currentMenu==menus.board, function()
+	whenKeyPressed(key, 'sapce', 'none', currentMenu==menus.board, function()
 		camera:reset()
 		camera:center()
 	end)	
 end
 
-function devKeyPressed(key, scancode, isrepeat)
+function devKeyPressed(key)
 	-- ANY MENU
-	if checkKeyPressed(key, 'escape') then
+	if checkKeyPressed(key, 'escape', 'none', not dontescape) then
 		if currentMenu>menus.title then currentMenu=currentMenu-1
 		elseif currentMenu<menus.title then currentMenu=currentMenu+1
 		end
@@ -1040,9 +1033,34 @@ function devKeyPressed(key, scancode, isrepeat)
 		end
 	end
 
+	if settings.deleteWithX and checkKeyPressed(key, 'x', 'none', currentMenu==menus.board) then
+		if selectedPinID ~= 0 then -- First Pin of new Connection selected
+			local pin = getPinByID(selectedPinID)
+			if pin then pin.isConnected = false end
+			selectedPinID = 0
+		else  -- no Pin selected
+			local pinID = getPinIDByPos(mx, my)
+			if pinID then
+				removeConnectionWithPinID(pinID)
+			else
+				local bobID = getBobIDByPos(mx, my)
+				if bobID then
+					removeBobByID(bobID)
+				end
+			end
+		end
+	end
+
+	if settings.deleteWithX and checkKeyPressed(key, 'x', 'shift', currentMenu==menus.board) then
+		local groupID = getGroupIDByPos(mx, my)
+		if groupID then
+			removeGroupByID(groupID, love.keyboard.isDown("lalt"))
+		end
+	end
+
 	if checkKeyPressed(key, any{'1','2','3','4','5','6','7','8','9'}, 'alt', currentMenu==menus.board) then
 		saveBoard()
-		currentBoard = tonumber(key)
+		currentBoard = tonumber(key) or 1
 		loadBoard()
 	end
 
@@ -1056,19 +1074,119 @@ function devKeyPressed(key, scancode, isrepeat)
 
 	if checkKeyPressed(key, '0', 'none', currentMenu==menus.board) then camera:reset() end
 	if checkKeyPressed(key, 'space', 'none', currentMenu==menus.board) then camera:center() end
-
-	if checkKeyPressed(key, 'f') then
-		-- print(classes.GATE(0,0))
-		-- print(classes.GATE(0,0).__class)
-		-- print(classes.GATE(0,0).__name)
-		-- print(classes.GATE(0,0).__class.__name)
-	end
 end
 
 function love.textinput(key)
 	vgui:textinput(key)
 end
 --==============================================[ CUSTOM FUNCTIONS ]==============================================--
+
+function updateBoardsList()
+	local boardfiles = io.popen('dir /b /a-d "'..love.filesystem.getSaveDirectory()..'"'):read'*all'
+	log.debug(lume.format('Found Boards: \n{1}', {boardfiles}))
+
+	log.debug'Checking if Boards are valid...'
+	local boardnames = lume.split(boardfiles, '\n')
+	local validboards = {}
+
+	for i, name in ipairs(boardnames) do
+		local valid = true
+		-- check if exists
+		for j, v in ipairs(validboards) do
+			if v == name then valid = false end
+		end
+
+		-- check if .json file
+		if not name:match'%.json$' then
+			valid = false
+		end
+
+		-- check if has contents
+		local contents = love.filesystem.read(name)
+		if not contents then
+			valid = false
+		else
+			-- check if has gates, peripherals, connections
+			if not contents:match'gates' or not contents:match'peripherals' or not contents:match'connections' then
+				valid = false
+				log.debug(lume.format('Board [{1}] is (probably) not a board save file!', {name}))
+			end
+		end
+
+		-- check if valid json		
+		local success, data = pcall(json.decode, contents)
+		if not success or not data then
+			valid = false
+			log.debug(lume.format('Board [{1}] has invalid json!', {name}))
+		end
+
+		if valid then lume.push(validboards, name) end
+	end
+
+	log.debug(lume.format('Valid Boards: {1}\n{2}', {#validboards, table.concat(validboards, '\n')}))
+end
+
+function createBoardCallback()	
+	if createBoard(boardslistgui.createtextbox.value) then
+		boardslistgui.createtextbox.value = ''
+		boardslistgui.createtextbox:cursorxupdate()
+		boardslistgui.createtextbox:setfocus(false)
+	end
+end
+
+function createBoard(name)
+	ignoreKeyInputs = false
+	if not name or name == '' then return false end
+	log.debug(lume.format('Creating Board [{1}]...', {name}))
+	local badchars = [[#%&{}\<>*?/$!'":@+`|=]]
+	local badcharstable = {'#', '%%', '&', '{', '}', '\\', '<', '>', '*', '?', '/', '$', '!', '\'', '"', ':', '@', '+', '`', '|', '='}
+	local choppedname = {}
+	for i = 1, #name do
+		table.insert(choppedname, name:sub(i, i))
+	end
+
+	for i, char in ipairs(choppedname) do
+		for j, badchar in ipairs(badcharstable) do
+			if char == badchar then
+				log.error(lume.format('Board name [{1}] contains invalid character [{2}]!', {name, badchar}))
+				return false
+			end
+		end
+	end
+	
+	local createfunc = function()
+		local lsucc, lmessage = love.filesystem.write(
+			name..'.json',
+			json.encode({
+				gates = {},
+				peripherals = {},
+				connections = {},
+				groups = {}
+			})
+		)
+		return lsucc, lmessage
+	end
+
+	if SAVECATCHMODE then
+		local success, result = pcall(createfunc)
+		if not success then
+			log.error('Creating Board failed: '..tostring(result))
+		end
+	else
+		if not createfunc() then			
+			log.error('Creating Board failed')
+		end
+	end
+	return true
+end
+
+function renameBoard(name, newName)
+
+end
+
+function deleteBoard(name)
+
+end
 
 function shouldShowMenu(menu)
 	return menu==currentMenu or menu==currentMenu-1 or menu==currentMenu+1
@@ -1268,7 +1386,7 @@ end
 
 function addGate(gate)
 	local addgatefunc = function()
-		log.debug('Added Gate with ID: '..gate.id)
+		log.trace('Added Gate with ID: '..gate.id)
 		lume.push(gates, gate)
 		-- love.thread.getChannel("addGate"):push(json.encode(gate))
 	end
@@ -1283,8 +1401,8 @@ function addGate(gate)
 	end
 end
 function addPeripheral(peripheral)
-	local addperfunc = function()		
-		log.debug('Added Peripheral with ID: '..peripheral.id)
+	local addperfunc = function()
+		log.trace('Added Peripheral with ID: '..peripheral.id)
 		lume.push(peripherals, peripheral)
 		-- love.thread.getChannel("addPeripheral"):push(json.encode(peripheral))
 	end
@@ -1300,7 +1418,7 @@ function addPeripheral(peripheral)
 end
 function addConnection(con)
 	local addconfunc = function()
-		log.debug('Added Connection, Outputpin ID:'..con.outputpin.id..' and Inputpin ID:'..con.inputpin.id)
+		log.trace('Added Connection, Outputpin ID:'..con.outputpin.id..' and Inputpin ID:'..con.inputpin.id)
 		lume.push(connections, con)
 		-- love.thread.getChannel("addConnection"):push(json.encode(con))
 	end
@@ -1347,7 +1465,7 @@ end
 
 function loadBoard()
 	local loadingfunc = function()
-		contents = love.filesystem.read(string.format("board%d.json", currentBoard))
+		contents = love.filesystem.read(lume.format("{1}.json", {currentBoard}))
 		if contents then
 			local data = json.decode(contents)
 			resetBoard()
@@ -1371,8 +1489,12 @@ function loadBoard()
 					lume.push(groups, group)
 				end
 			end
+			messages.add({{0.6, 0.89, 0.63}, lume.format("Board {1} Loaded!", {currentBoard})})
+			return true
 		else
-			log.warn('board file not found')
+			log.warn'board file not found'
+			messages.add({{0.9, 0.55, 0.66}, lume.format("Save File not found for Board {1}", {currentBoard})})
+			return false
 		end
 	end
 
@@ -1380,19 +1502,16 @@ function loadBoard()
 		local success, result = pcall(loadingfunc)
 		if not success then
 			log.error('loading board failed: '..tostring(result))
-		else
-			messages.add({{0.6, 0.89, 0.63},string.format("Board %d Loaded!", currentBoard)})
 		end
 	else
-		loadingfunc()
-		messages.add({{0.6, 0.89, 0.63},string.format("Board %d Loaded!", currentBoard)})
+		local success = loadingfunc()
 	end
 end
 
 function saveBoard()
 	local savefunc = function()
 		local lsucc, lmessage = love.filesystem.write(
-			string.format("board%d.json", currentBoard),
+			lume.format("{1}.json", {currentBoard}),
 			json.encode({
 				gates = prepForSave(gates),
 				peripherals = prepForSave(peripherals),
@@ -1408,11 +1527,14 @@ function saveBoard()
 		if not success then
 			log.error('saving board failed: '..tostring(result))
 		else
-			messages.add({{0.6, 0.89, 0.63},string.format("Board %d Saved!", currentBoard)})
+			messages.add({{0.6, 0.89, 0.63},lume.format("Board {1} Saved!", {currentBoard})})
 		end
 	else
-		savefunc()
-		messages.add({{0.6, 0.89, 0.63},string.format("Board %d Saved!", currentBoard)})
+		if savefunc() then
+			messages.add({{0.6, 0.89, 0.63},lume.format("Board {1} Saved!", {currentBoard})})
+		else
+			messages.add({{0.9, 0.55, 0.66},string.format("Failed trying to save {1}", {currentBoard})})
+		end
 	end
 end
 
