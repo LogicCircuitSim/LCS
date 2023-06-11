@@ -318,7 +318,7 @@ function love.draw()
 		local camoffset = camera:getOffset()
 		for i=0 + (camoffset.x%step), love.graphics.getWidth(), step do
 			for j=0 + (camoffset.y%step), love.graphics.getHeight(), step do
-				love.graphics.circle("fill", i, j, 2)
+				love.graphics.circle("fill", i, j, 2 * camera:getScale())
 			end
 		end
 
