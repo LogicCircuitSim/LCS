@@ -449,7 +449,10 @@ function love.draw()
 
 		if settings.showDebug then
 			love.graphics.setColor(0.6, 1, 0.6)
-			love.graphics.print(string.format("Board Objects: %d\nConnections: %d\n", lume.count(getBobjects()),  lume.count(connections), love.graphics.getWidth()-250, 150))
+			love.graphics.print(
+				lume.format("Board Objects: {1}\nConnections: {2}\n", {lume.count(getBobjects()), lume.count(connections)}),
+				love.graphics.getWidth()-250, 100
+			)
 		
 			if love.timer.getTime() - telemetryIntervalLast > telemetryInterval/1000 then
 				for k,v in pairs(telemetry) do
@@ -783,29 +786,15 @@ function saveKeyPressed(key)
 	end)
 
 	if key == 'left' and love.keyboard.isDown('lctrl') then
-		currentMenu=currentMenu-1
+		switchToMenu(currentMenu-1)
 	end
 	if key == 'right' and love.keyboard.isDown('lctrl') then 
-		currentMenu=currentMenu+1
+		switchToMenu(currentMenu+1)
 	end
 
 	whenKeyPressed(key, 'f11', 'none', nil, function()
 		settings.fullscreen = not settings.fullscreen
 		love.window.setFullscreen(settings.fullscreen, "exclusive")
-	end)
-
-	whenKeyPressed(key, 'f9', 'none', nil, function()
-		for i=1,10 do 
-			love.filesystem.write(
-				string.format("board%d.json", i),
-				json.encode({
-					gates = {},
-					peripherals = {},
-					connections = {},
-					groups = {}
-				}))
-		end
-		messages.add({{0.9, 0.55, 0.66}, "Wiped Board Save Files"})
 	end)
 
 	-- BOARD MENU
@@ -951,6 +940,7 @@ function saveKeyPressed(key)
 
 	whenKeyPressed(key, any{'1','2','3','4','5','6','7','8','9'}, 'alt', currentMenu==menus.board, function()
 		saveBoard()
+		resetBoard()
 		currentBoard = tonumber(key)
 		loadBoard()
 	end)

@@ -1,0 +1,7 @@
+- Context Menu
+- alt + number to switch between boards
+- alt + up/down to quick switch boards
+- make copy/paste work without resetting the board (PROLLY NOT POSSIBLE)
+- connection glitch => discord
+- update help popup
+- number outputs based on amount of the current Board
