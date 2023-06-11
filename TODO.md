@@ -1,8 +1,12 @@
 - Context Menu
 - alt + number to switch between boards
 - alt + up/down to quick switch boards
-- make copy/paste work without resetting the board (PROLLY NOT POSSIBLE)
+- make copy/paste work without resetting the board
+    - when pasting, add big number to each id in the entire table to avoid id conflicts
+    - get current static id for each type (pin, gate, peripheral) and add like 10 to it
 - connection glitch => discord
 - update help popup
 - number outputs based on amount of the current Board
 - wrap more in pcall()
+- add settings
+- add about
