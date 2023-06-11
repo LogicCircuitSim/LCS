@@ -3,7 +3,7 @@ local version = "1.8.3"
 function love.conf(t)
     t.title = "L.C.S. - Version "..version.." - Von Noah, David und Samuel"
     t.author = "Noah, David and Samuel"
-    t.console = false
+    t.console = true
     t.identity = "LCS_SAVE_2"
     
     -- t.window.width, t.window.height = 1280, 720
