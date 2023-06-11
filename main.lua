@@ -35,7 +35,7 @@ if SAVECATCHMODE then log.info'SAVE CATCH MODE ENABLED' end
 
 local settings = {
 	showGrid = true,
-	useSmoothCubic = false,
+	useSmoothDrag = true,
 	showPinIDs = false,
 	showPinStates = false,
 	showGateIDs = false,
@@ -46,7 +46,7 @@ local settings = {
 	showFPS = true,
 	fullscreen = false,
 
-	deleteWithX = false,
+	deleteWithX = true,
 }
 
 local gates = {}
@@ -165,7 +165,7 @@ function love.load()
 	menuTransform = love.math.newTransform(0,0,0,1)
     boardTransform = love.math.newTransform(0,0,0,1)
 
-	camera = Camera.newSmoothWithTransform(boardTransform, 40, 0.5, 5)
+	camera = Camera.newSmoothWithTransform(boardTransform, 30, 0.5, 5)
 
 	-- lume.push(boardslist, { name='Davids Baord fsr', id=1, size=45000, lastmodified='07.06.23'})
 	-- lume.push(boardslist, { name='Just a Test you see', id=2, size=0, lastmodified='07.06.23'})
@@ -193,7 +193,7 @@ function love.update(dt)
 	if currentMenu == menus.title then
 
 	elseif currentMenu == menus.board then
-		camera:update(dt, settings.useSmoothCubic)
+		camera:update(dt, settings.useSmoothDrag)
 		mx, my = camera:getScreenPos(love.mouse.getPosition())
 		-- update board objects
 		local time = love.timer.getTime()
@@ -311,16 +311,18 @@ function love.draw()
 	if shouldShowMenu(menus.board) then
 		-- camera
 		mx, my = camera:getScreenPos(love.mouse.getPosition())
-		camera:set()
-			-- grid points
-			love.graphics.setColor(0.15, 0.15, 0.15)
-			local step = 50
-			for i=0, love.graphics.getWidth(), step do
-				for j=0, love.graphics.getHeight(), step do
-					love.graphics.circle("fill", i, j, 2)
-				end
-			end
 
+		-- grid points
+		love.graphics.setColor(0.15, 0.15, 0.15)
+		local step = 50 * camera:getScale()
+		local camoffset = camera:getOffset()
+		for i=0 + (camoffset.x%step), love.graphics.getWidth(), step do
+			for j=0 + (camoffset.y%step), love.graphics.getHeight(), step do
+				love.graphics.circle("fill", i, j, 2)
+			end
+		end
+
+		camera:set()			
 			-- groups
 			for i,group in ipairs(groups) do
 				love.graphics.setColor(0.05, 0.05, 0.05, 0.6)
@@ -780,10 +782,6 @@ function saveKeyPressed(key)
 		switchToMenu('back')
 	end)
 
-	whenKeyPressed(key, 'f', 'none', not ignoreKeyInputs, function()
-		updateBoardsList()
-	end)
-
 	if key == 'left' and love.keyboard.isDown('lctrl') then
 		currentMenu=currentMenu-1
 	end
@@ -817,10 +815,9 @@ function saveKeyPressed(key)
 	whenKeyPressed(key, 'f2', 'none', currentMenu==menus.board, function() settings.showDebug = not settings.showDebug end)
 	whenKeyPressed(key, 'f3', 'none', currentMenu==menus.board, function() settings.showFPS = not settings.showFPS end)
 	whenKeyPressed(key, 'f4', 'none', currentMenu==menus.board, function() settings.showGrid = not settings.showGrid end)
-
-	whenKeyPressed(key, 'i', 'none', currentMenu==menus.board, function()
-		settings.useSmoothCubic = not settings.useSmoothCubic
-		messages.add('Use Smooth Cubic: '..tostring(settings.useSmoothCubic))
+	whenKeyPressed(key, 'f5', 'none', currentMenu==menus.board, function()
+		settings.useSmoothDrag = not settings.useSmoothDrag
+		messages.add('Use Smooth Drag: '..tostring(settings.useSmoothDrag))
 	end)
 
 	whenKeyPressed(key, 's', 'ctrl', currentMenu==menus.board, function() saveBoard() end)
@@ -915,7 +912,42 @@ function saveKeyPressed(key)
 		if groupID then
 			removeGroupByID(groupID, love.keyboard.isDown("lalt"))
 		end
-	end)	
+	end)
+
+	whenKeyPressed(key, 'x', 'none', currentMenu==menus.board and settings.deleteWithX, function()
+		if selectedPinID ~= 0 then --------------------- First Pin of new Connection selected
+			local pin = getPinByID(selectedPinID)
+			if pin then pin.isConnected = false end
+			selectedPinID = 0
+		else ------------------------------------------- no Pin selected
+			if #selection.ids > 0 then
+				for i, id in ipairs(selection.ids) do
+					local bob = getBobByID(id)
+					if bob then
+						removeBobByID(id)
+					end
+				end
+				selection = {x1=0, y1=0, x2=0, y2=0, ids={}}
+			else
+				local pinID = getPinIDByPos(mx, my)
+				if pinID then
+					removeConnectionWithPinID(pinID)
+				else
+					local bobID = getBobIDByPos(mx, my)
+					if bobID then
+						removeBobByID(bobID)
+					end
+				end
+			end
+		end
+	end)
+
+	whenKeyPressed(key, 'x', 'shift', currentMenu==menus.board and settings.deleteWithX, function()
+		local groupID = getGroupIDByPos(mx, my)
+		if groupID then
+			removeGroupByID(groupID, love.keyboard.isDown("lalt"))
+		end
+	end)
 
 	whenKeyPressed(key, any{'1','2','3','4','5','6','7','8','9'}, 'alt', currentMenu==menus.board, function()
 		saveBoard()
@@ -982,8 +1014,8 @@ function devKeyPressed(key)
 	if checkKeyPressed(key, 'f4', 'none', currentMenu==menus.board) then settings.showGrid = not settings.showGrid end
 
 	if checkKeyPressed(key, 'i', 'none', currentMenu==menus.board) then
-		settings.useSmoothCubic = not settings.useSmoothCubic
-		messages.add('Use Smooth Cubic: '..tostring(settings.useSmoothCubic))
+		settings.useSmoothDrag = not settings.useSmoothDrag
+		messages.add('Use Smooth Cubic: '..tostring(settings.useSmoothDrag))
 	end
 
 	if checkKeyPressed(key, 's', 'ctrl', currentMenu==menus.board) then saveBoard() end
@@ -992,7 +1024,7 @@ function devKeyPressed(key)
 	if checkKeyPressed(key, 'd', 'ctrl', currentMenu==menus.board) then addDefaults() end
 
 	if checkKeyPressed(key, 'p', 'ctrl', currentMenu==menus.board) then settings.showPlotter = not settings.showPlotter end
-	if checkKeyPressed(key, 'g', 'ctrl', currentMenu==menus.board) then graphicSettings.betterGraphics = not graphicSettings.betterGraphics; messages.add('Use Better Graphics: '..tostring(settings.useSmoothCubic)) end
+	if checkKeyPressed(key, 'g', 'ctrl', currentMenu==menus.board) then graphicSettings.betterGraphics = not graphicSettings.betterGraphics; messages.add('Use Better Graphics: '..tostring(settings.useSmoothDrag)) end
 
 	if checkKeyPressed(key, 'c', 'ctrl', currentMenu==menus.board) then -- HERE update to save groups too
 		love.system.setClipboardText(json.encode({ gates=gates, peripherals=peripherals, connections=connections }))

@@ -66,86 +66,6 @@ function Camera.new(cx, cy)
 	return self
 end
 
-function Camera.newSmooth(speed, minZoom, maxZoom)
-	local self = {}
-
-	local x, y = 0, 0
-	local scale = 1
-	local tx, ty, ts = x, y, scale
-	local active = false
-	local speed = speed or 1
-	local minZoom = minZoom or 0.1
-	local maxZoom = maxZoom or 10
-
-	function self:set()
-		if active then
-			active = false
-			g.pop()
-		else
-			g.push("transform")
-			g.translate(x,y)
-			g.scale(scale)
-			active = true
-		end
-	end
-
-	function self:getScreenPos(mx, my)
-		return (mx-tx)/scale, (my-ty)/scale
-	end
-
-	function self:applyScale(dx, dy)
-		return dx/scale, dy/scale
-	end
-
-	function self:move(dx, dy)
-		tx = tx + dx
-		ty = ty + dy
-	end
-
-	function self:zoom(val)
-		local factor = 0.8
-		if val > 0 then
-			factor = 1/factor
-		end
-		
-		ts = ts*factor
-
-		if ts > minZoom*1.2 and ts < maxZoom*0.8 then
-			local dx = (lm.getX()-tx) * (factor-1)
-			local dy = (lm.getY()-ty) * (factor-1)
-
-			tx = tx - dx
-			ty = ty - dy
-		end
-
-		ts = lume.clamp(ts, minZoom, maxZoom)
-
-	end
-
-	function self:update(dt, cubic)
-		if cubic then
-			x = lume.smooth(x, tx, speed*dt)
-			y = lume.smooth(y, ty, speed*dt)
-			scale = lume.smooth(scale, ts, speed*dt)
-		else
-			x = lume.lerp(x, tx, (speed*0.3)*dt)
-			y = lume.lerp(y, ty, (speed*0.3)*dt)
-			scale = lume.lerp(scale, ts, (speed*0.3)*dt)
-		end
-	end
-
-	function self:center()
-		tx = 0
-		ty = 0
-	end
-
-	function self:reset()
-		ts = 1
-	end
-
-	return self
-end
-
 function Camera.newSmoothWithTransform(transformObj, speed, minZoom, maxZoom)
 	local self = {}
 
@@ -201,15 +121,15 @@ function Camera.newSmoothWithTransform(transformObj, speed, minZoom, maxZoom)
 
 	end
 
-	function self:update(dt, cubic)
-		if cubic then
-			x = lume.slerp(x, tx, speed*dt)
-			y = lume.slerp(y, ty, speed*dt)
-			scale = lume.slerp(scale, ts, speed*dt)
+	function self:update(dt, smooth)
+		if smooth then
+			x = lume.lerp(x, tx, speed*dt)
+			y = lume.lerp(y, ty, speed*dt)
+			scale = lume.lerp(scale, ts, speed*dt)
 		else
-			x = lume.lerp(x, tx, (speed*0.3)*dt)
-			y = lume.lerp(y, ty, (speed*0.3)*dt)
-			scale = lume.lerp(scale, ts, (speed*0.3)*dt)
+			x = tx
+			y = ty
+			scale = ts
 		end
 		transformObj:setTransformation(x, y, 0, scale)
 	end
@@ -221,6 +141,14 @@ function Camera.newSmoothWithTransform(transformObj, speed, minZoom, maxZoom)
 
 	function self:reset()
 		ts = 1
+	end
+
+	function self:getOffset()
+		return {x=x, y=y}
+	end
+
+	function self:getScale()
+		return scale
 	end
 
 	return self
