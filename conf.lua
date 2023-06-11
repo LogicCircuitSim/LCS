@@ -1,4 +1,4 @@
-local version = "1.8.3"
+local version = "1.9.6"
 
 function love.conf(t)
     t.title = "L.C.S. - Version "..version.." - Von Noah, David und Samuel"
