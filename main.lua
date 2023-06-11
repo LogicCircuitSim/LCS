@@ -251,6 +251,9 @@ function love.draw()
 	-- ##############################[  TITLE  ]##############################
 		if shouldShowMenu(menus.title) then
 		love.graphics.print('L.C.S.', hugefont, 10, 10)
+		love.graphics.print('> Boards', namefont, 20, 200)
+		love.graphics.print('> Settings', namefont, 20, 250)
+		love.graphics.print('> About', namefont, 20, 300)
 	end
 
 	love.graphics.translate(love.graphics.getWidth(), 0)
@@ -288,8 +291,8 @@ function love.draw()
 			love.graphics.setColor(boardslistui.colors.text)
 			love.graphics.print(text, namefont, x + padding, y + padding)
 			local sizelength = font:getWidth('Size: 00000KB') + padding*4
-			love.graphics.print(lume.format('Size: {size}KB', board),                x + padding, y+padding + namefont:getHeight()+padding)
-			love.graphics.print(lume.format('Last Modified: {lastmodified}', board), x + padding + sizelength, y+padding + namefont:getHeight()+padding)
+			love.graphics.print(lume.format('Size: {1}KB', {lume.round(board.size/1024)}), x + padding, y+padding + namefont:getHeight()+padding)
+			love.graphics.print(lume.format('Last Modified: {day}.{month}.{year}', os.date("*t", board.lastmodified)), x + padding + sizelength, y+padding + namefont:getHeight()+padding)
 
 			if hovered and currentMenu == menus.list then
 				boardslistgui.renamebutton.absx = x + w - boardslistui.renamebutton.w*3 - padding - boardslistui.spacing*2
@@ -495,11 +498,18 @@ function love.draw()
 		
 		love.graphics.setColor(1, 1, 1)
 		if settings.showFPS then
+			local performancecolor = {gradient(love.timer.getFPS()/maxFPSRecorded, {0.500, 0.500, -3.142}, {0.980, 0.498, 0.500}, {0.060, 0.358, 1.000}, {0.168, 0.608, 0.667})}
 			love.graphics.print(
-				lume.format(
-					"FPS: {1} | {2}% Lag | Current Board: {3} (Press [F1] for Help)",
-					{tostring(love.timer.getFPS()), lume.round(100-love.timer.getFPS()/maxFPSRecorded*100), currentBoard}
-				),
+				-- lume.format(
+				-- 	"FPS: {1} | {2}% Lag | Current Board: {3} (Press [F1] for Help)",
+				-- 	{tostring(love.timer.getFPS()), lume.round(100-love.timer.getFPS()/maxFPSRecorded*100), currentBoard}
+				-- ),  {0.500 0.500 -3.142},{0.980 0.498 0.500},{0.060 0.358 1.000},{0.168 0.608 0.667}
+				{
+					{1,1,1}, "FPS: ", performancecolor, love.timer.getFPS(),
+					{1,1,1}, "| Lag: ", performancecolor, tostring(lume.round(100-love.timer.getFPS()/maxFPSRecorded*100))..'%',
+					{1,1,1}, "| Current Board: ", {0.6, 0.89, 0.63}, currentBoard,
+					{1,1,1}, " (Press [F1] for Help)",
+				},
 				10, 10
 			)
 		end
@@ -660,7 +670,12 @@ function love.mousereleased(x, y, button)
 		if button == 1 and boardslistui.hoveredboard > 0 and not vgui.hoverelement then
 			currentBoard = boardslist[boardslistui.hoveredboard].name
 			loadBoard()
-			currentMenu = menus.board
+			switchToMenu(menus.board)
+		end
+	end
+	if currentMenu == menus.title then
+		if button == 1 then
+			switchToMenu(menus.list)
 		end
 	end
 end
