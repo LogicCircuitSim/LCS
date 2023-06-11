@@ -234,6 +234,7 @@ end
 -- #                           LOVE DRAW                           #
 -- #################################################################
 function love.draw()
+	love.graphics.setScissor(0, 0, love.graphics.getWidth(), love.graphics.getHeight())
 	love.graphics.push('transform')
 	love.graphics.applyTransform(menuTransform)
 	-- ##############################[  ABOUT  ]##############################
@@ -259,7 +260,10 @@ function love.draw()
 	love.graphics.translate(love.graphics.getWidth(), 0)
 	-- ##############################[  BOARDS LIST  ]##############################
 	if shouldShowMenu(menus.list) then
-		mx,my = camera:getScreenPos(love.mouse.getPosition())
+		love.graphics.setColor(0.11, 0.11, 0.11)
+		love.graphics.rectangle('fill', 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
+
+		mx,my = love.mouse.getPosition()
 		love.graphics.setColor(1, 1, 1)
 		love.graphics.print("Boards:", bigfont, 10, 10)
 		
@@ -309,9 +313,10 @@ function love.draw()
 	love.graphics.translate(love.graphics.getWidth(), 0)
 	-- ##############################[  BOARD  ]##############################
 	if shouldShowMenu(menus.board) then
-		-- camera
 		mx, my = camera:getScreenPos(love.mouse.getPosition())
 
+		love.graphics.stencil(boardStencil, "replace", 1)
+		love.graphics.setStencilTest("greater", 0)
 		-- grid points
 		love.graphics.setColor(0.15, 0.15, 0.15)
 		local step = 50 * camera:getScale()
@@ -321,7 +326,6 @@ function love.draw()
 				love.graphics.circle("fill", i, j, 2 * camera:getScale())
 			end
 		end
-
 		camera:set()			
 			-- groups
 			for i,group in ipairs(groups) do
@@ -518,10 +522,7 @@ function love.draw()
 				10, 10
 			)
 		end
-		-- if isDraggingGroup or isDraggingObject or isDraggingSelection then
-		-- 	love.graphics.print(isDraggingSelection and "Dragging Selection" or (isDraggingGroup and "Dragging Group ID: "..tostring(draggedGroupID) or (isDraggingObject and "Dragging Object ID: "..tostring(draggedObjectID) or "")), 10, 70)
-		-- end
-			
+		love.graphics.setStencilTest()
 		messages.draw()
 	end
 	love.graphics.pop()
@@ -539,6 +540,11 @@ function love.draw()
 	-- 	love.graphics.getWidth()-(font:getWidth('IgnoreKeyInputs: '..tostring(ignoreKeyInputs)))-10, 30
 	-- )
 
+	love.graphics.setScissor()
+end
+
+function boardStencil()
+	love.graphics.rectangle("fill", 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
 end
 
 function love.quit()

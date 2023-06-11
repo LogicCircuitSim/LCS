@@ -5,3 +5,4 @@
 - connection glitch => discord
 - update help popup
 - number outputs based on amount of the current Board
+- wrap more in pcall()
