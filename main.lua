@@ -29,6 +29,7 @@ log.info('Done. Took ' .. formatTime(love.timer.getTime() - startTime))
 -- =============================================================[ VARIABLES ]==================================================================--
 
 log.info'Initializing variables...'
+local unpack = table.unpack
 local SAVECATCHMODE = true
 if SAVECATCHMODE then log.info'SAVE CATCH MODE ENABLED' end
 
@@ -69,7 +70,7 @@ local dontSelect = false
 local plotterID = 0
 local plotterData = {}
 
-local currentBoard = 1
+local currentBoard = 'none'
 
 local menus = {
 	about = 0,
@@ -102,6 +103,7 @@ boardslistui.renamebutton = { text='Rename', w=font:getWidth'Rename' + boardslis
 boardslistui.exportbutton = { text='Export', w=font:getWidth'Export' + boardslistui.padding*2, h=font:getHeight() + boardslistui.padding*2, hidewhennotneeded=true }
 boardslistui.deletebutton = { text='Delete', w=font:getWidth'Delete' + boardslistui.padding*2, h=font:getHeight() + boardslistui.padding*2, hidewhennotneeded=true }
 boardslistui.boarditemheight = namefont:getHeight() + boardslistui.padding*2
+boardslistui.hoveredboard = 0
 
 boardslist = {}
 boardslistgui = {}
@@ -139,19 +141,18 @@ function love.load()
 	boardslistgui.createbutton = vgui:button(boardslistui.createbutton.text, { x=boardslistui.startx, y=boardslistui.starty, w=boardslistui.createbutton.w, h=boardslistui.createbutton.h })
 	boardslistgui.createbutton.press = createBoardCallback
 
-	boardslistgui.renamebutton = vgui:button(boardslistui.renamebutton.text, { x=boardslistui.startx, y=boardslistui.starty, w=boardslistui.renamebutton.w, h=boardslistui.renamebutton.h })
+	boardslistgui.renamebutton = vgui:button(boardslistui.renamebutton.text, { x=0, y=-1000, w=boardslistui.renamebutton.w, h=boardslistui.renamebutton.h })
 	boardslistgui.renamebutton.press = function() print('Renaming Board') end
 
-	boardslistgui.exportbutton = vgui:button(boardslistui.exportbutton.text, { x=boardslistui.startx, y=boardslistui.starty, w=boardslistui.exportbutton.w, h=boardslistui.exportbutton.h })
+	boardslistgui.exportbutton = vgui:button(boardslistui.exportbutton.text, { x=0, y=-1000, w=boardslistui.exportbutton.w, h=boardslistui.exportbutton.h })
 	boardslistgui.exportbutton.press = function() print('Exporting Board') end
 
 	boardslistgui.deletebutton = vgui:coloredbutton(
 		boardslistui.deletebutton.text
-		,{ x=boardslistui.startx, y=boardslistui.starty, w=boardslistui.deletebutton.w, h=boardslistui.deletebutton.h }
+		,{ x=0, y=-1000, w=boardslistui.deletebutton.w, h=boardslistui.deletebutton.h }
 		,{ 0.8, 0.2, 0.2 }
 	)
-	boardslistgui.deletebutton.press = function() print('Deleting Board') end
-
+	boardslistgui.deletebutton.press = function() deleteBoard() end
 
 	boardslistgui.createtextbox = vgui:input('', { x=boardslistui.startx+boardslistui.createbutton.w + boardslistui.spacing, y=boardslistui.starty, w=boardslistui.createbutton.w*4, h=boardslistui.createbutton.h })
 	boardslistgui.createtextbox.done = createBoardCallback
@@ -166,11 +167,11 @@ function love.load()
 
 	camera = Camera.newSmoothWithTransform(boardTransform, 40, 0.5, 5)
 
-	loadBoard()
+	-- lume.push(boardslist, { name='Davids Baord fsr', id=1, size=45000, lastmodified='07.06.23'})
+	-- lume.push(boardslist, { name='Just a Test you see', id=2, size=0, lastmodified='07.06.23'})
+	-- lume.push(boardslist, { name='HS3JN9-NY83OS-H9S2-HSK83GHS937', id=3, size='10', lastmodified='07.06.23'})
 
-	lume.push(boardslist, { name='Davids Baord fsr', id=1, size=45000, lastmodified='07.06.23'})
-	lume.push(boardslist, { name='Just a Test you see', id=2, size=0, lastmodified='07.06.23'})
-	lume.push(boardslist, { name='HS3JN9-NY83OS-H9S2-HSK83GHS937', id=3, size='10', lastmodified='07.06.23'})
+	updateBoardsList()
 
 	vgui:updatepositions()
 	log.info('Done.')
@@ -180,7 +181,6 @@ end
 -- #                           LOVE UPDATE                         #
 -- #################################################################
 function love.update(dt)
-	vgui:update(dt)
 	-- slide animation for menus
 	currentMenu = lume.clamp(currentMenu, 0, 4)
 	menuTargetX = love.graphics.getWidth() * currentMenu
@@ -207,7 +207,7 @@ function love.update(dt)
 		end
 		telemetry.updateTimeConnections = love.timer.getTime() - time
 	elseif currentMenu == menus.list then
-		-- do list stuff
+		vgui:update(dt)
 	elseif currentMenu == menus.settings then
 		-- do settings stuff
 	elseif currentMenu == menus.about then
@@ -217,6 +217,9 @@ function love.update(dt)
 	-- OTHERS
 
 	ignoreKeyInputs = vgui.focuselement == boardslistgui.createtextbox
+	if vgui.hoverelement and vgui.hoverelement ~= boardslistgui.createtextbox then
+		vgui.presselement = nil
+	end
 
 	if love.timer.getFPS() > maxFPSRecorded then
 		maxFPSRecorded = love.timer.getFPS()
@@ -263,6 +266,7 @@ function love.draw()
 		boardslistgui.exportbutton.absy = -1000
 		boardslistgui.deletebutton.absx = 0
 		boardslistgui.deletebutton.absy = -1000
+		boardslistui.hoveredboard = 0
 
 		love.graphics.setLineWidth(0.5)
 		local w = love.graphics.getWidth() - boardslistui.startx - boardslistui.padding
@@ -274,6 +278,7 @@ function love.draw()
 			local padding = boardslistui.padding
 			local text = board.name
 			local hovered = mx>x and mx<x+w and my>y and my<y+h
+			if hovered then boardslistui.hoveredboard = i end
 
 			if hovered then love.graphics.setColor(boardslistui.colors.hovered)
 			else love.graphics.setColor(boardslistui.colors.background) end			
@@ -282,13 +287,11 @@ function love.draw()
 			love.graphics.rectangle("line", x, y, w, h, rounding)
 			love.graphics.setColor(boardslistui.colors.text)
 			love.graphics.print(text, namefont, x + padding, y + padding)
-			local idlength = font:getWidth('ID: #00') + padding*4
 			local sizelength = font:getWidth('Size: 00000KB') + padding*4
-			love.graphics.print(lume.format('ID: #{id}', board),                     x + padding, y+padding + namefont:getHeight()+padding)
-			love.graphics.print(lume.format('Size: {size}KB', board),                x + padding + idlength, y+padding + namefont:getHeight()+padding)
-			love.graphics.print(lume.format('Last Modified: {lastmodified}', board), x + padding + idlength + sizelength, y+padding + namefont:getHeight()+padding)
+			love.graphics.print(lume.format('Size: {size}KB', board),                x + padding, y+padding + namefont:getHeight()+padding)
+			love.graphics.print(lume.format('Last Modified: {lastmodified}', board), x + padding + sizelength, y+padding + namefont:getHeight()+padding)
 
-			if hovered then				
+			if hovered and currentMenu == menus.list then
 				boardslistgui.renamebutton.absx = x + w - boardslistui.renamebutton.w*3 - padding - boardslistui.spacing*2
 				boardslistgui.renamebutton.absy = y + padding				
 				boardslistgui.exportbutton.absx = x + w - boardslistui.exportbutton.w*2 - padding - boardslistui.spacing
@@ -297,7 +300,6 @@ function love.draw()
 				boardslistgui.deletebutton.absy = y + padding
 			end
 		end
-
 	end
 	vgui:draw()
 
@@ -493,7 +495,13 @@ function love.draw()
 		
 		love.graphics.setColor(1, 1, 1)
 		if settings.showFPS then
-			love.graphics.print(("FPS: %s | %.1f%% Lag | Current Board: %d (Press [F1] for Help)"):format(tostring(love.timer.getFPS()), (100-love.timer.getFPS()/maxFPSRecorded*100), currentBoard), 10, 10)
+			love.graphics.print(
+				lume.format(
+					"FPS: {1} | {2}% Lag | Current Board: {3} (Press [F1] for Help)",
+					{tostring(love.timer.getFPS()), lume.round(100-love.timer.getFPS()/maxFPSRecorded*100), currentBoard}
+				),
+				10, 10
+			)
 		end
 		-- if isDraggingGroup or isDraggingObject or isDraggingSelection then
 		-- 	love.graphics.print(isDraggingSelection and "Dragging Selection" or (isDraggingGroup and "Dragging Group ID: "..tostring(draggedGroupID) or (isDraggingObject and "Dragging Object ID: "..tostring(draggedObjectID) or "")), 10, 70)
@@ -507,7 +515,14 @@ function love.draw()
 	if SAVECATCHMODE then
 		love.graphics.print({{0.6, 0.89, 0.63}, 'SAVE CATCH MODE ENABLED'}, love.graphics.getWidth()-(font:getWidth('SAVE CATCH MODE ENABLED'))-10, 10)
 	end
-	love.graphics.print({{0.98, 0.77, 0.42}, 'IgnoreKeyInputs: '..tostring(ignoreKeyInputs)}, love.graphics.getWidth()-(font:getWidth('IgnoreKeyInputs: '..tostring(ignoreKeyInputs)))-10, 30)
+	-- love.graphics.print({
+	-- 		{0.98, 0.77, 0.42}, 'Hovered Board: '..tostring(boardslistui.hoveredboard),
+	-- 		{0.98, 0.77, 0.42}, '\nHovered: '..tostring(vgui.hoverelement),
+	-- 		{0.98, 0.77, 0.42}, '\nFocused: '..tostring(vgui.focuselement),
+	-- 		{0.98, 0.77, 0.42}, '\nPressed: '..tostring(vgui.presselement)
+	-- 	},
+	-- 	love.graphics.getWidth()-(font:getWidth('IgnoreKeyInputs: '..tostring(ignoreKeyInputs)))-10, 30
+	-- )
 
 end
 
@@ -523,7 +538,6 @@ end
 -- #                       LOVE MOUSE PRESSED                      #
 -- #################################################################
 function love.mousepressed(x, y, button)
-	vgui:mousepress(x, y, button)
 	-- ************************************[ BOARD ]************************************ --
 	if currentMenu == menus.board then
 		x,y = camera:getScreenPos( x,y )
@@ -601,6 +615,8 @@ function love.mousepressed(x, y, button)
 				end
 			end
 		end
+	elseif currentMenu == menus.list then
+		vgui:mousepress(x, y, button)
 	end
 end
 
@@ -608,35 +624,44 @@ end
 -- #                       LOVE MOUSE RELEASED                     #
 -- #################################################################
 function love.mousereleased(x, y, button)
-	vgui:mouserelease(x, y, button)
-	x, y = camera:getScreenPos(x, y)
-	if button == 1 and not dontSelect then
-		isSelecting = false
-		selection.x2 = x
-		selection.y2 = y
+	if currentMenu == menus.board then
+		x, y = camera:getScreenPos(x, y)
+		if button == 1 and not dontSelect then
+			isSelecting = false
+			selection.x2 = x
+			selection.y2 = y
 
-		if selection.x1 > selection.x2 then
-			selection.x1, selection.x2 = selection.x2, selection.x1
-		end
-		if selection.y1 > selection.y2 then
-			selection.y1, selection.y2 = selection.y2, selection.y1
-		end
-
-		selection.ids = {}
-		for bob in myBobjects() do
-			if bob.pos.x > selection.x1 and bob.pos.x < selection.x2 and bob.pos.y > selection.y1 and bob.pos.y < selection.y2 then
-				table.insert(selection.ids, bob.id)
+			if selection.x1 > selection.x2 then
+				selection.x1, selection.x2 = selection.x2, selection.x1
 			end
-		end
-	elseif button == 3 then
-		-- check if dragged object is below or above any near bobject | TODO
-		if draggedObjectID > 0 then	end
+			if selection.y1 > selection.y2 then
+				selection.y1, selection.y2 = selection.y2, selection.y1
+			end
 
-		isDraggingObject = false
-		draggedObjectID = 0
-		isDraggingGroup = false
-		draggedGroupID = 0
-		isDraggingSelection = false
+			selection.ids = {}
+			for bob in myBobjects() do
+				if bob.pos.x > selection.x1 and bob.pos.x < selection.x2 and bob.pos.y > selection.y1 and bob.pos.y < selection.y2 then
+					table.insert(selection.ids, bob.id)
+				end
+			end
+		elseif button == 3 then
+			-- check if dragged object is below or above any near bobject | TODO
+			if draggedObjectID > 0 then	end
+
+			isDraggingObject = false
+			draggedObjectID = 0
+			isDraggingGroup = false
+			draggedGroupID = 0
+			isDraggingSelection = false
+		end
+	end
+	if currentMenu == menus.list then
+		vgui:mouserelease(x, y, button)
+		if button == 1 and boardslistui.hoveredboard > 0 and not vgui.hoverelement then
+			currentBoard = boardslist[boardslistui.hoveredboard].name
+			loadBoard()
+			currentMenu = menus.board
+		end
 	end
 end
 
@@ -644,99 +669,76 @@ end
 -- #                        LOVE MOUSE MOVED                       #
 -- #################################################################
 function love.mousemoved(x, y, dx, dy)
-	x, y = camera:getScreenPos(x, y)
-	sdx, sdy = camera:applyScale(dx, dy)
-	
-	if isDraggingGroup then
-		local group = groups[draggedGroupID]
-		group.x1 = group.x1 + sdx
-		group.y1 = group.y1 + sdy
-		group.x2 = group.x2 + sdx
-		group.y2 = group.y2 + sdy
+	if currentMenu == menus.board then
+		x, y = camera:getScreenPos(x, y)
+		sdx, sdy = camera:applyScale(dx, dy)
+		
+		if isDraggingGroup then
+			local group = groups[draggedGroupID]
+			group.x1 = group.x1 + sdx
+			group.y1 = group.y1 + sdy
+			group.x2 = group.x2 + sdx
+			group.y2 = group.y2 + sdy
 
-		for i,id in ipairs(group.ids) do
-			local bob = getBobByID(id)
-			if bob then
-				bob.pos.x = bob.pos.x + sdx
-				bob.pos.y = bob.pos.y + sdy
+			for i,id in ipairs(group.ids) do
+				local bob = getBobByID(id)
+				if bob then
+					bob.pos.x = bob.pos.x + sdx
+					bob.pos.y = bob.pos.y + sdy
+				end
 			end
-		end
-	elseif isDraggingSelection then
-		selection.x1 = selection.x1 + sdx
-		selection.y1 = selection.y1 + sdy
-		selection.x2 = selection.x2 + sdx
-		selection.y2 = selection.y2 + sdy
+		elseif isDraggingSelection then
+			selection.x1 = selection.x1 + sdx
+			selection.y1 = selection.y1 + sdy
+			selection.x2 = selection.x2 + sdx
+			selection.y2 = selection.y2 + sdy
 
-		for i,id in ipairs(selection.ids) do
-			local bob = getBobByID(id)
-			if bob then
-				bob.pos.x = bob.pos.x + sdx
-				bob.pos.y = bob.pos.y + sdy
+			for i,id in ipairs(selection.ids) do
+				local bob = getBobByID(id)
+				if bob then
+					bob.pos.x = bob.pos.x + sdx
+					bob.pos.y = bob.pos.y + sdy
+				end
 			end
-		end
-	elseif isDraggingObject then
-		local bob = getBobByID(draggedObjectID)
-		bob.pos.x = bob.pos.x + sdx
-		bob.pos.y = bob.pos.y + sdy
-	else
-		if love.mouse.isDown(2) then
-			camera:move( dx,dy )
+		elseif isDraggingObject then
+			local bob = getBobByID(draggedObjectID)
+			bob.pos.x = bob.pos.x + sdx
+			bob.pos.y = bob.pos.y + sdy
+		else
+			if love.mouse.isDown(2) then
+				camera:move( dx,dy )
+			end
 		end
 	end
-
-	--dragging selection
-	-- if isDraggingSelection and not isDraggingGroup then
-	-- 	for i,id in ipairs(selection.ids) do
-	-- 		local bob = getBobByID(id)
-	-- 		if bob then
-	-- 			bob.pos.x = bob.pos.x + (love.mouse.getX() - lastX)
-	-- 			bob.pos.y = bob.pos.y + (love.mouse.getY() - lastY)
-	-- 		end
-	-- 	end
-	-- 	selection.x1 = selection.x1 + (love.mouse.getX() - lastX)
-	-- 	selection.x2 = selection.x2 + (love.mouse.getX() - lastX)
-	-- 	selection.y1 = selection.y1 + (love.mouse.getY() - lastY)
-	-- 	selection.y2 = selection.y2 + (love.mouse.getY() - lastY)
-	-- end
-
-	-- if isDraggingObject then
-	-- 	local gate = getGateByID(draggedObjectID)
-	-- 	local peripheral = getPeripheralByID(draggedObjectID)
-	-- 	if gate then
-	-- 		gate.pos.x = love.mouse.getX() - GATEgetWidth()/2
-	-- 		gate.pos.y = love.mouse.getY() - gate:getHeight()/2
-	-- 	elseif peripheral then
-	-- 		peripheral.pos.x = love.mouse.getX() - PERIPHERALgetWidth()/2
-	-- 		peripheral.pos.y = love.mouse.getY() - peripheral:getHeight()/2
-	-- 	end
-	-- end
 end
 
 -- #################################################################
 -- #                        LOVE WHEEL MOVED                       #
 -- #################################################################
 function love.wheelmoved(dx, dy)
-    if love.keyboard.isDown("lshift") then
-		for bob in myBobjects() do
-			if bob:isInside(love.mouse.getX(), love.mouse.getY()) then
-				if bob.name == "CLOCK" then
-					bob.tickspeed = bob.tickspeed + dy
-					if bob.tickspeed < 1 then bob.tickspeed = 1 end
-				elseif bob.type == "GATE" then
-					if dy > 0 then
-						bob:addPin()
-					elseif dy < 0 then
-						bob:removePin()
+	if currentMenu == menus.board then
+		if love.keyboard.isDown("lshift") then
+			for bob in myBobjects() do
+				if bob:isInside(love.mouse.getX(), love.mouse.getY()) then
+					if bob.name == "CLOCK" then
+						bob.tickspeed = bob.tickspeed + dy
+						if bob.tickspeed < 1 then bob.tickspeed = 1 end
+					elseif bob.type == "GATE" then
+						if dy > 0 then
+							bob:addPin()
+						elseif dy < 0 then
+							bob:removePin()
+						end
+					elseif bob.name == "BUFFER" then
+						bob.ticks = bob.ticks + dy
+						if bob.ticks < 1 then bob.ticks = 1 end
 					end
-				elseif bob.name == "BUFFER" then
-					bob.ticks = bob.ticks + dy
-					if bob.ticks < 1 then bob.ticks = 1 end
 				end
 			end
+		elseif love.keyboard.isDown("lctrl") then
+		else
+			camera:zoom(dy)
 		end
-    elseif love.keyboard.isDown("lctrl") then
-    else
-		camera:zoom(dy)
 	end
 end
 
@@ -760,9 +762,7 @@ end
 function saveKeyPressed(key)
 	-- ANY MENU
 	whenKeyPressed(key, 'escape', 'none', not dontescape, function()
-		if currentMenu>menus.title then currentMenu=currentMenu-1
-		elseif currentMenu<menus.title then currentMenu=currentMenu+1
-		end
+		switchToMenu('back')
 	end)
 
 	whenKeyPressed(key, 'f', 'none', not ignoreKeyInputs, function()
@@ -1081,7 +1081,39 @@ function love.textinput(key)
 end
 --==============================================[ CUSTOM FUNCTIONS ]==============================================--
 
+function switchToMenu(menu)
+	if menu == 'back' then
+		if currentMenu>menus.title then menu=currentMenu-1
+		elseif currentMenu<menus.title then menu=currentMenu+1
+		else menu=menus.title end
+	end
+	if currentMenu == menus.board and menu == menus.list then
+		saveBoard()
+		updateBoardsList()
+	end
+	if currentMenu == menus.list then
+		boardslistgui.createbutton.absx = 0
+		boardslistgui.createbutton.absy = -1000
+		boardslistgui.createtextbox.absx = 0
+		boardslistgui.createtextbox.absy = -1000
+		boardslistgui.renamebutton.absx = 0
+		boardslistgui.renamebutton.absy = -1000
+		boardslistgui.exportbutton.absx = 0
+		boardslistgui.exportbutton.absy = -1000
+		boardslistgui.deletebutton.absx = 0
+		boardslistgui.deletebutton.absy = -1000
+	end	
+	if menu == menus.list then
+		boardslistgui.createbutton.absx = boardslistui.startx
+		boardslistgui.createbutton.absy = boardslistui.starty
+		boardslistgui.createtextbox.absx = boardslistui.startx+boardslistui.createbutton.w + boardslistui.spacing
+		boardslistgui.createtextbox.absy = boardslistui.starty
+	end
+	currentMenu = lume.clamp(menu, 0, 4)
+end
+
 function updateBoardsList()
+	boardslist = {}
 	local boardfiles = io.popen('dir /b /a-d "'..love.filesystem.getSaveDirectory()..'"'):read'*all'
 	log.debug(lume.format('Found Boards: \n{1}', {boardfiles}))
 
@@ -1122,8 +1154,20 @@ function updateBoardsList()
 
 		if valid then lume.push(validboards, name) end
 	end
-
 	log.debug(lume.format('Valid Boards: {1}\n{2}', {#validboards, table.concat(validboards, '\n')}))
+
+	-- get info from valid boards
+	for i, name in ipairs(validboards) do
+		log.debug(lume.format('Getting info from Board [{1}]...', {name}))
+		local info = love.filesystem.getInfo(name)
+		local board = {}
+		board.name = name:match'(.+)%..+'
+		board.lastmodified = info.modtime
+		board.size = info.size
+		lume.push(boardslist, board)
+	end
+
+	-- lume.push(boardslist, unpack(validboards))
 end
 
 function createBoardCallback()	
@@ -1131,6 +1175,7 @@ function createBoardCallback()
 		boardslistgui.createtextbox.value = ''
 		boardslistgui.createtextbox:cursorxupdate()
 		boardslistgui.createtextbox:setfocus(false)
+		updateBoardsList()
 	end
 end
 
@@ -1184,8 +1229,29 @@ function renameBoard(name, newName)
 
 end
 
-function deleteBoard(name)
+function deleteBoard()
+	if boardslistui.hoveredboard > 0 then
+		local board = boardslist[boardslistui.hoveredboard]
+		log.debug(lume.format('Deleting Board ({1})[{2}]...', {boardslistui.hoveredboard,board.name}))
+		local deletefunc = function()
+			local lsucc, lmessage = love.filesystem.remove(board.name..'.json')
+			return lsucc, lmessage
+		end
 
+		if SAVECATCHMODE then
+			local success, result = pcall(deletefunc)
+			if not success then
+				log.error('Deleting Board failed: '..tostring(result))
+			end
+		else
+			if not deletefunc() then
+				log.error('Deleting Board failed')
+			end
+		end
+		lume.remove(boardslist, boardslistui.hoveredboard)
+		boardslistui.hoveredboard = 0
+	end
+	updateBoardsList()
 end
 
 function shouldShowMenu(menu)
