@@ -418,7 +418,7 @@ function love.draw()
 			end
 		end
 
-		if settings.showHelp then
+		if settings.showHelp then -- Color this shit
 			love.graphics.setColor(1, 1, 1)
 			love.graphics.print(nt[[
 				1-AND
@@ -506,8 +506,8 @@ function love.draw()
 				-- ),  {0.500 0.500 -3.142},{0.980 0.498 0.500},{0.060 0.358 1.000},{0.168 0.608 0.667}
 				{
 					{1,1,1}, "FPS: ", performancecolor, love.timer.getFPS(),
-					{1,1,1}, "| Lag: ", performancecolor, tostring(lume.round(100-love.timer.getFPS()/maxFPSRecorded*100))..'%',
-					{1,1,1}, "| Current Board: ", {0.6, 0.89, 0.63}, currentBoard,
+					{1,1,1}, " | Lag: ", performancecolor, tostring(lume.round(100-love.timer.getFPS()/maxFPSRecorded*100))..'%',
+					{1,1,1}, " | Current Board: ", {0.6, 0.89, 0.63}, currentBoard,
 					{1,1,1}, " (Press [F1] for Help)",
 				},
 				10, 10
@@ -651,7 +651,7 @@ function love.mousereleased(x, y, button)
 			selection.ids = {}
 			for bob in myBobjects() do
 				if bob.pos.x > selection.x1 and bob.pos.x < selection.x2 and bob.pos.y > selection.y1 and bob.pos.y < selection.y2 then
-					table.insert(selection.ids, bob.id)
+					lume.push(selection.ids, bob.id)
 				end
 			end
 		elseif button == 3 then
@@ -888,13 +888,23 @@ function saveKeyPressed(key)
 			if pin then pin.isConnected = false end
 			selectedPinID = 0
 		else ------------------------------------------- no Pin selected
-			local pinID = getPinIDByPos(mx, my)
-			if pinID then
-				removeConnectionWithPinID(pinID)
+			if #selection.ids > 0 then
+				for i, id in ipairs(selection.ids) do
+					local bob = getBobByID(id)
+					if bob then
+						removeBobByID(id)
+					end
+				end
+				selection = {x1=0, y1=0, x2=0, y2=0, ids={}}
 			else
-				local bobID = getBobIDByPos(mx, my)
-				if bobID then
-					removeBobByID(bobID)
+				local pinID = getPinIDByPos(mx, my)
+				if pinID then
+					removeConnectionWithPinID(pinID)
+				else
+					local bobID = getBobIDByPos(mx, my)
+					if bobID then
+						removeBobByID(bobID)
+					end
 				end
 			end
 		end

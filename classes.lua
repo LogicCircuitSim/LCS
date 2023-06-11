@@ -506,8 +506,12 @@ do
         self.outputpin = OUTPUTPIN(self.id)
       end
       self.state = false
-      self.getWidth = self.__class.size.width * self.__class.size.scale
-      self.getHeight = self.__class.size.space * 4 * (self.__class.size.scale / 7)
+      self.getWidth = function(self)
+        return self.__class.size.width * self.__class.size.scale
+      end
+      self.getHeight = function(self)
+        return self.__class.size.space * 4 * (self.__class.size.scale / 7)
+      end
     end,
     __base = _base_0,
     __name = "PERIPHERAL",

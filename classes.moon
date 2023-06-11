@@ -213,8 +213,8 @@ class PERIPHERAL extends BOARDOBJECT
         @inputpin = INPUTPIN(@id) if @hasinputpin
         @outputpin = OUTPUTPIN(@id) if @hasoutputpin
         @state = false
-        @getWidth = @@size.width*@@size.scale
-        @getHeight = @@size.space * 4 * (@@size.scale/7)
+        @getWidth = => @@size.width*@@size.scale
+        @getHeight = => @@size.space * 4 * (@@size.scale/7)
 
     update: =>
         
