@@ -932,7 +932,7 @@ function saveKeyPressed(key)
 	whenKeyPressed(key, '7', 'none', currentMenu==menus.board, function() addGate(classes.NOT (mx - classes.GATE:getWidth()/2, my - classes.GATE:getHeight(1)/2)) end)
 
 
-	whenKeyPressed(key, 'sapce', 'none', currentMenu==menus.board, function()
+	whenKeyPressed(key, 'space', 'none', currentMenu==menus.board, function()
 		camera:reset()
 		camera:center()
 	end)	
