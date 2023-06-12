@@ -64,30 +64,6 @@ local helpText = nt[[
 	F11 = VOLLBILD
 ]]
 
-local helpText2 = nt[[
-	1-INPUT
-	2-OUTPUT
-	3-NOT
-	4-AND
-	5-OR
-	6-XOR
-	7-NAND
-	8-NOR
-	9-XNOR
-	c-CLOCK
-	b-BUFFER
-	
-	ESC-BACK
-	STRG+S-SAVE
-	STRG+L-LOAD
-	STRG+C-COPY
-	STRG+V-PASTE
-	STRG+R-RESET
-	STRG+D-DEFAULTS
-	STRG+P-PLOTTER
-	STRG+Q-QUIT
-]]
-
 
 local settings = {
 	useSmoothDrag = true,
@@ -821,7 +797,7 @@ function love.keypressed(key, scancode, isrepeat)
 	end
 
 	if not ignoreKeyInputs then
-		if SAVECATCHMODE then saveKeyPressed(key)
+		if SAVECATCHMODE then pcall(saveKeyPressed, key)
 		else devKeyPressed(key) end
 	end
 end
@@ -983,7 +959,6 @@ function saveKeyPressed(key)
 			end
 		end
 	end)
-
 	whenKeyPressed(key, 'x', 'shift', currentMenu==menus.board and settings.deleteWithX, function()
 		local groupID = getGroupIDByPos(mx, my)
 		if groupID then
@@ -991,33 +966,49 @@ function saveKeyPressed(key)
 		end
 	end)
 
-	whenKeyPressed(key, '1', 'alt', currentMenu==menus.board and currentBoard ~= boardslist[1].name, function()
-		saveBoard()
-		currentBoard = boardslist[1].name
-		loadBoard()
+	whenKeyPressed(key, '1', 'alt', currentMenu==menus.board and lume.count(boardslist)>0, function()
+		if boardslist[1] then
+			if currentBoard ~= boardslist[1].name then
+				saveBoard()
+				currentBoard = boardslist[1].name
+				loadBoard()
+			end
+		end
 	end)
-	whenKeyPressed(key, '2', 'alt', currentMenu==menus.board and currentBoard ~= boardslist[2].name, function()
-		saveBoard()
-		currentBoard = boardslist[2].name
-		loadBoard()
+	whenKeyPressed(key, '2', 'alt', currentMenu==menus.board and lume.count(boardslist)>1, function()
+		if boardslist[2] then
+			if currentBoard ~= boardslist[2].name then
+				saveBoard()
+				currentBoard = boardslist[2].name
+				loadBoard()
+			end
+		end
 	end)
-	whenKeyPressed(key, '3', 'alt', currentMenu==menus.board and currentBoard ~= boardslist[3].name, function()
-		saveBoard()
-		currentBoard = boardslist[3].name
-		loadBoard()
+	whenKeyPressed(key, '3', 'alt', currentMenu==menus.board and lume.count(boardslist)>2, function()
+		if boardslist[3] then
+			if currentBoard ~= boardslist[3].name then
+				saveBoard()
+				currentBoard = boardslist[3].name
+				loadBoard()
+			end
+		end
 	end)
 
-	whenKeyPressed(key, 'up', 'alt', currentMenu==menus.board and currentBoard ~= boardslist[1].name, function()
-		saveBoard()
-		currentBoardIndex = lume.clamp(currentBoardIndex-1, 1, #boardslist)
-		currentBoard = boardslist[currentBoardIndex].name
-		loadBoard()
+	whenKeyPressed(key, 'up', 'alt', currentMenu==menus.board and lume.count(boardslist)>0, function()
+		if currentBoard ~= boardslist[1].name then
+			saveBoard()
+			currentBoardIndex = lume.clamp(currentBoardIndex-1, 1, lume.count(boardslist))
+			currentBoard = boardslist[currentBoardIndex].name
+			loadBoard()
+		end
 	end)
-	whenKeyPressed(key, 'down', 'alt', currentMenu==menus.board and currentBoard ~= boardslist[#boardslist].name, function()
-		saveBoard()
-		currentBoardIndex = lume.clamp(currentBoardIndex+1, 1, #boardslist)
-		currentBoard = boardslist[currentBoardIndex].name
-		loadBoard()
+	whenKeyPressed(key, 'down', 'alt', currentMenu==menus.board and lume.count(boardslist)>1, function()
+		if currentBoard ~= boardslist[lume.count(boardslist)].name then
+			saveBoard()
+			currentBoardIndex = lume.clamp(currentBoardIndex+1, 1, lume.count(boardslist))
+			currentBoard = boardslist[currentBoardIndex].name
+			loadBoard()
+		end
 	end)
 
 	whenKeyPressed(key, '1', 'none', currentMenu==menus.board, function() addPeripheral(classes.INPUT (mx - classes.PERIPHERAL:getWidth()/2, my - classes.PERIPHERAL:getHeight()/2)) end)
