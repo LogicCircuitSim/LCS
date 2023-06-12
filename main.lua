@@ -1,7 +1,8 @@
 -- ==============================================================[ IMPORTS ]===================================================================--
-print'\nVersion: 1.9.6'
+local version = require('settings').version
+print('\nVersion: '..version)
 print'Starting...'
-
+-- local unpack = unpack or table.unpack
 local startTime = love.timer.getTime()
 local log = require 'lib.log'
 log.level = 'debug'
@@ -34,7 +35,6 @@ local SAVECATCHMODE = true
 if SAVECATCHMODE then log.info'SAVE CATCH MODE ENABLED' end
 
 local settings = {
-	showGrid = true,
 	useSmoothDrag = true,
 	showPinIDs = false,
 	showPinStates = false,
@@ -42,10 +42,9 @@ local settings = {
 	showPlotter = false,
 	showHelp = false,
 	showDebug = false,
-	showTelemetry = false,
+	showMessages = true,
 	showFPS = true,
 	fullscreen = false,
-
 	deleteWithX = true,
 }
 
@@ -70,7 +69,8 @@ local dontSelect = false
 local plotterID = 0
 local plotterData = {}
 
-local currentBoard = 'none'
+local currentBoard, currentBoardIndex = 'none', 0
+local boardslist = {}
 
 local menus = {
 	about = 0,
@@ -105,7 +105,6 @@ boardslistui.deletebutton = { text='Delete', w=font:getWidth'Delete' + boardslis
 boardslistui.boarditemheight = namefont:getHeight() + boardslistui.padding*2
 boardslistui.hoveredboard = 0
 
-boardslist = {}
 boardslistgui = {}
 boardslistgui.createbutton = {}
 boardslistgui.renamebutton = {}
@@ -135,6 +134,10 @@ function love.load()
 	log.info('Loading main Program...')
 	love.graphics.setBackgroundColor(0.11, 0.11, 0.11)
 	love.keyboard.setKeyRepeat(true)
+	local deskDimX, deskDimY = love.window.getDesktopDimensions()
+	settings.desktopDim = {x=deskDimX, y=deskDimY}
+	local windowDimX, windowDimY = love.graphics.getDimensions()
+	settings.windowDim = {x=windowDimX, y=windowDimY}
 	messages.x = 10
 	messages.y = 40
 
@@ -251,7 +254,7 @@ function love.draw()
 	love.graphics.translate(love.graphics.getWidth(), 0)	
 	-- ##############################[  TITLE  ]##############################
 		if shouldShowMenu(menus.title) then
-		love.graphics.print('L.C.S.', hugefont, 10, 10)
+		love.graphics.print('L.C.S. (Version '..version..')', hugefont, 10, 10)
 		love.graphics.print('> Boards', namefont, 20, 200)
 		love.graphics.print('> Settings', namefont, 20, 250)
 		love.graphics.print('> About', namefont, 20, 300)
@@ -319,13 +322,21 @@ function love.draw()
 		love.graphics.setStencilTest("greater", 0)
 		-- grid points
 		love.graphics.setColor(0.15, 0.15, 0.15)
-		local step = 50 * camera:getScale()
+		local scale = camera:getScale()
 		local camoffset = camera:getOffset()
+		local step = 50 * scale
 		for i=0 + (camoffset.x%step), love.graphics.getWidth(), step do
 			for j=0 + (camoffset.y%step), love.graphics.getHeight(), step do
-				love.graphics.circle("fill", i, j, 2 * camera:getScale())
+				love.graphics.circle("fill", i, j, 2 * scale)
 			end
 		end
+		
+		love.graphics.setColor(0.11, 0.11, 0.11)
+		love.graphics.circle("fill", camoffset.x, camoffset.y, 3 * scale)
+		love.graphics.setColor(0.18, 0.18, 0.18)
+		love.graphics.setLineWidth(2 * scale)
+		love.graphics.circle("line", camoffset.x, camoffset.y, 3 * scale)
+
 		camera:set()			
 			-- groups
 			for i,group in ipairs(groups) do
@@ -523,7 +534,7 @@ function love.draw()
 			)
 		end
 		love.graphics.setStencilTest()
-		messages.draw()
+		if settings.showMessages then messages.draw() end
 	end
 	love.graphics.pop()
 
@@ -531,14 +542,6 @@ function love.draw()
 	if SAVECATCHMODE then
 		love.graphics.print({{0.6, 0.89, 0.63}, 'SAVE CATCH MODE ENABLED'}, love.graphics.getWidth()-(font:getWidth('SAVE CATCH MODE ENABLED'))-10, 10)
 	end
-	-- love.graphics.print({
-	-- 		{0.98, 0.77, 0.42}, 'Hovered Board: '..tostring(boardslistui.hoveredboard),
-	-- 		{0.98, 0.77, 0.42}, '\nHovered: '..tostring(vgui.hoverelement),
-	-- 		{0.98, 0.77, 0.42}, '\nFocused: '..tostring(vgui.focuselement),
-	-- 		{0.98, 0.77, 0.42}, '\nPressed: '..tostring(vgui.presselement)
-	-- 	},
-	-- 	love.graphics.getWidth()-(font:getWidth('IgnoreKeyInputs: '..tostring(ignoreKeyInputs)))-10, 30
-	-- )
 
 	love.graphics.setScissor()
 end
@@ -571,14 +574,14 @@ function love.mousepressed(x, y, button)
 
 				if selectedPinID == 0 then
 					if outpin then
-						log.debug'Left Click on Output Pin'
+						log.trace'Left Click on Output Pin'
 						dontSelect = true
 						outpin.isConnected = true
 						selectedPinID = outpin.id or selectedPinID
 					end
 				else
 					if inpin then
-						log.debug'Left Click on Input Pin'
+						log.trace'Left Click on Input Pin'
 						dontSelect = true
 						if not inpin.isConnected then
 							inpin.isConnected = true
@@ -666,7 +669,6 @@ function love.mousereleased(x, y, button)
 				end
 			end
 		elseif button == 3 then
-			-- check if dragged object is below or above any near bobject | TODO
 			if draggedObjectID > 0 then	end
 
 			isDraggingObject = false
@@ -679,7 +681,8 @@ function love.mousereleased(x, y, button)
 	if currentMenu == menus.list then
 		vgui:mouserelease(x, y, button)
 		if button == 1 and boardslistui.hoveredboard > 0 and not vgui.hoverelement then
-			currentBoard = boardslist[boardslistui.hoveredboard].name
+			currentBoardIndex = boardslistui.hoveredboard
+			currentBoard = boardslist[currentBoardIndex].name
 			loadBoard()
 			switchToMenu(menus.board)
 		end
@@ -791,15 +794,15 @@ function saveKeyPressed(key)
 		switchToMenu('back')
 	end)
 
-	if key == 'left' and love.keyboard.isDown('lctrl') then
-		switchToMenu(currentMenu-1)
-	end
-	if key == 'right' and love.keyboard.isDown('lctrl') then 
-		switchToMenu(currentMenu+1)
-	end
-
 	whenKeyPressed(key, 'f11', 'none', nil, function()
 		settings.fullscreen = not settings.fullscreen
+		local w,h = 0,0
+		if settings.fullscreen then
+			w,h = love.window.getDesktopDimensions()
+		else
+			w,h = settings.windowDim.x, settings.windowDim.y
+		end
+		love.window.setMode(w, h, {fullscreen=settings.fullscreen, resizable=true, vsync=false, minwidth=100, minheight=100})
 		love.window.setFullscreen(settings.fullscreen, "exclusive")
 	end)
 
@@ -809,7 +812,7 @@ function saveKeyPressed(key)
 	whenKeyPressed(key, 'f1', 'none', currentMenu==menus.board, function() settings.showHelp = not settings.showHelp end)
 	whenKeyPressed(key, 'f2', 'none', currentMenu==menus.board, function() settings.showDebug = not settings.showDebug end)
 	whenKeyPressed(key, 'f3', 'none', currentMenu==menus.board, function() settings.showFPS = not settings.showFPS end)
-	whenKeyPressed(key, 'f4', 'none', currentMenu==menus.board, function() settings.showGrid = not settings.showGrid end)
+	whenKeyPressed(key, 'f4', 'none', currentMenu==menus.board, function() settings.showMessages = not settings.showMessages end)
 	whenKeyPressed(key, 'f5', 'none', currentMenu==menus.board, function()
 		settings.useSmoothDrag = not settings.useSmoothDrag
 		messages.add('Use Smooth Drag: '..tostring(settings.useSmoothDrag))
@@ -864,7 +867,7 @@ function saveKeyPressed(key)
 		end
 	end)
 
-	whenKeyPressed(key, 'q', 'ctrl', currentMenu==menus.board, function()
+	whenKeyPressed(key, 'q', 'ctrl', nil, function()
 		love.event.quit()
 	end)
 
@@ -944,12 +947,41 @@ function saveKeyPressed(key)
 		end
 	end)
 
-	whenKeyPressed(key, any{'1','2','3','4','5','6','7','8','9'}, 'alt', currentMenu==menus.board, function()
+	-- whenKeyPressed(key, any{'1','2','3','4','5','6','7','8','9'}, 'alt', currentMenu==menus.board, function()
+	-- 	saveBoard()
+	-- 	resetBoard()
+	-- 	currentBoard = tonumber(key)
+	-- 	loadBoard()
+	-- end)
+	whenKeyPressed(key, '1', 'alt', currentMenu==menus.board and currentBoard ~= boardslist[1].name, function()
 		saveBoard()
-		resetBoard()
-		currentBoard = tonumber(key)
+		currentBoard = boardslist[1].name
 		loadBoard()
 	end)
+	whenKeyPressed(key, '2', 'alt', currentMenu==menus.board and currentBoard ~= boardslist[2].name, function()
+		saveBoard()
+		currentBoard = boardslist[2].name
+		loadBoard()
+	end)
+	whenKeyPressed(key, '3', 'alt', currentMenu==menus.board and currentBoard ~= boardslist[3].name, function()
+		saveBoard()
+		currentBoard = boardslist[3].name
+		loadBoard()
+	end)
+
+	whenKeyPressed(key, 'up', 'alt', currentMenu==menus.board and currentBoard ~= boardslist[1].name, function()
+		saveBoard()
+		currentBoardIndex = lume.clamp(currentBoardIndex-1, 1, #boardslist)
+		currentBoard = boardslist[currentBoardIndex].name
+		loadBoard()
+	end)
+	whenKeyPressed(key, 'down', 'alt', currentMenu==menus.board and currentBoard ~= boardslist[#boardslist].name, function()
+		saveBoard()
+		currentBoardIndex = lume.clamp(currentBoardIndex+1, 1, #boardslist)
+		currentBoard = boardslist[currentBoardIndex].name
+		loadBoard()
+	end)
+
 
 	whenKeyPressed(key, '1', 'none', currentMenu==menus.board, function() addPeripheral(classes.INPUT (mx - classes.PERIPHERAL:getWidth()/2, my - classes.PERIPHERAL:getHeight()/2)) end)
 	whenKeyPressed(key, '2', 'none', currentMenu==menus.board, function() addPeripheral(classes.OUTPUT(mx - classes.PERIPHERAL:getWidth()/2, my - classes.PERIPHERAL:getHeight()/2)) end)
@@ -1573,12 +1605,19 @@ end
 
 function addDefaults()
 	addGate(classes.AND(200, 100))
-	addGate(classes.OR(400, 100))
-	addGate(classes.NOT(600, 100, 1))
-	addPeripheral(classes.BUFFER(200, 300))
-	addPeripheral(classes.INPUT(200, 500))
-	addPeripheral(classes.CLOCK(400, 500))
+	addGate(classes.OR (400, 100))
+	addGate(classes.NOT(600, 100))
+
+	addGate(classes.NAND(200, 300))
+	addGate(classes.NOR (400, 300))
+	addGate(classes.XOR (600, 300))
+	addGate(classes.XNOR(800, 300))
+
+	addPeripheral(classes.INPUT (200, 500))
+	addPeripheral(classes.CLOCK (200, 600))
+	addPeripheral(classes.BUFFER(400, 500))
 	addPeripheral(classes.OUTPUT(600, 500))
+	
 	messages.add({{0.6, 0.89, 0.63},"Default Board Loaded!"})
 end
 
@@ -1623,7 +1662,9 @@ function loadBoard()
 			log.error('loading board failed: '..tostring(result))
 		end
 	else
-		local success = loadingfunc()
+		if loadingfunc() then
+			messages.add({{0.6, 0.89, 0.63}, lume.format("Board {1} Loaded!", {currentBoard})})
+		end
 	end
 end
 
@@ -1651,26 +1692,18 @@ function saveBoard()
 	else
 		if savefunc() then
 			messages.add({{0.6, 0.89, 0.63},lume.format("Board {1} Saved!", {currentBoard})})
-		else
-			messages.add({{0.9, 0.55, 0.66},string.format("Failed trying to save {1}", {currentBoard})})
 		end
 	end
 end
 
 function addGroup()
 	local addgroupfunc = function()
-		local group = { x1 = 10000, y1 = 10000, x2 = 0, y2 = 0, ids = {}}
-		local hasBobjects = false
+		local group = { x1 = math.huge, y1 = math.huge, x2 = -math.huge, y2 = -math.huge, ids = {}}
 		local padding = 20
 
 		for bob in myBobjects() do
-			-- if collect(selection.ids):contains(bob.id)
-			-- and groups:every(function(key,group) return not collect(group.ids):contains(bob.id) end) then
-			-- end
-			log.debug(bob.id)
-			if lume.find(selection.ids, bob.id) and
-			not lume.any(groups, function(x) return lume.find(x, bob,id) end) then
-				hasBobjects = true
+			log.trace(bob.id)
+			if lume.find(selection.ids, bob.id) and not lume.any(groups, function(group) return lume.find(group.ids, bob.id) end) then
 				if bob.pos.x < group.x1 then
 					group.x1 = bob.pos.x
 				end
@@ -1684,11 +1717,30 @@ function addGroup()
 					group.y2 = bob.pos.y + bob:getHeight() + padding
 				end
 
-				table.insert(group.ids, bob.id)
+				lume.push(group.ids, bob.id)
 			end
 		end
 
-		if hasBobjects then
+		for i, id in ipairs(selection.ids) do
+			if not lume.any(groups, function(group) return lume.find(group.ids, bob.id) end) then
+				local bob = getBobByID(id)
+				if bob.pos.x < group.x1 then
+					group.x1 = bob.pos.x
+				elseif bob.pos.x > group.x2 then
+					group.x2 = bob.pos.x + bob:getWidth() + padding
+				end
+
+				if bob.pos.y < group.y1 then
+					group.y1 = bob.pos.y
+				elseif bob.pos.y > group.y2 then
+					group.y2 = bob.pos.y + bob:getHeight() + padding
+				end
+
+				lume.push(group.ids, id)
+			end
+		end
+
+		if group.ids > 1 then
 			group.x1 = group.x1 - padding
 			group.y1 = group.y1 - padding
 			group.x2 = group.x2 + padding
@@ -1703,6 +1755,8 @@ function addGroup()
 		if not success then
 			log.error('adding group failed: '..tostring(result))
 		end
+	else
+		addgroupfunc()
 	end
 end
 
