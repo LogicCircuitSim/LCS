@@ -34,6 +34,55 @@ local unpack = table.unpack
 local SAVECATCHMODE = true
 if SAVECATCHMODE then log.info'SAVE CATCH MODE ENABLED' end
 
+local helpText = nt[[
+	1 = EINGANG
+	2 = AUSGANG
+	3 = NOT
+	4 = AND
+	5 = OR
+	6 = XOR
+	7 = NAND
+	8 = NOR
+	9 = XNOR
+	c = CLOCK
+	b = BUFFER
+	
+	ESC    = ZURÜCK
+	STRG+S = SPEICHERN
+	STRG+L = LADEN
+	STRG+C = KOPIEREN
+	STRG+V = EINFÜGEN
+	STRG+R = RESET
+	STRG+D = STANARDS
+	STRG+P = PLOTTER
+	STRG+Q = BEENDEN
+]]
+
+local helpText2 = nt[[
+	1-INPUT
+	2-OUTPUT
+	3-NOT
+	4-AND
+	5-OR
+	6-XOR
+	7-NAND
+	8-NOR
+	9-XNOR
+	c-CLOCK
+	b-BUFFER
+	
+	ESC-BACK
+	STRG+S-SAVE
+	STRG+L-LOAD
+	STRG+C-COPY
+	STRG+V-PASTE
+	STRG+R-RESET
+	STRG+D-DEFAULTS
+	STRG+P-PLOTTER
+	STRG+Q-QUIT
+]]
+
+
 local settings = {
 	useSmoothDrag = true,
 	showPinIDs = false,
@@ -98,10 +147,10 @@ local boardslistui = {
 	}
 }
 
-boardslistui.createbutton = { text='Create', w=font:getWidth'Create' + boardslistui.padding*2, h=font:getHeight() + boardslistui.padding*2 }
-boardslistui.renamebutton = { text='Rename', w=font:getWidth'Rename' + boardslistui.padding*2, h=font:getHeight() + boardslistui.padding*2, hidewhennotneeded=true }
-boardslistui.exportbutton = { text='Export', w=font:getWidth'Export' + boardslistui.padding*2, h=font:getHeight() + boardslistui.padding*2, hidewhennotneeded=true }
-boardslistui.deletebutton = { text='Delete', w=font:getWidth'Delete' + boardslistui.padding*2, h=font:getHeight() + boardslistui.padding*2, hidewhennotneeded=true }
+boardslistui.createbutton = { text='Erstellen', w=font:getWidth'Erstellen' + boardslistui.padding*2, h=font:getHeight() + boardslistui.padding*2 }
+boardslistui.renamebutton = { text='Umbenennen', w=font:getWidth'Umbenennen' + boardslistui.padding*2, h=font:getHeight() + boardslistui.padding*2 }
+boardslistui.exportbutton = { text='Exportieren', w=font:getWidth'Exportieren' + boardslistui.padding*2, h=font:getHeight() + boardslistui.padding*2 }
+boardslistui.deletebutton = { text='Löschen', w=font:getWidth'Löschen' + boardslistui.padding*2, h=font:getHeight() + boardslistui.padding*2 }
 boardslistui.boarditemheight = namefont:getHeight() + boardslistui.padding*2
 boardslistui.hoveredboard = 0
 
@@ -117,6 +166,8 @@ local ignoreKeyInputs = false
 local telemetryInterval, telemetryIntervalLast = 500, love.timer.getTime()
 local telemetry, telemetryShow = {}, {}
 local maxFPSRecorded = 60
+
+local updatesPerTick = 1
 
 local camera
 
@@ -145,10 +196,10 @@ function love.load()
 	boardslistgui.createbutton.press = createBoardCallback
 
 	boardslistgui.renamebutton = vgui:button(boardslistui.renamebutton.text, { x=0, y=-1000, w=boardslistui.renamebutton.w, h=boardslistui.renamebutton.h })
-	boardslistgui.renamebutton.press = function() print('Renaming Board') end
+	boardslistgui.renamebutton.press = function() print('Renaming Board...') end
 
 	boardslistgui.exportbutton = vgui:button(boardslistui.exportbutton.text, { x=0, y=-1000, w=boardslistui.exportbutton.w, h=boardslistui.exportbutton.h })
-	boardslistgui.exportbutton.press = function() print('Exporting Board') end
+	boardslistgui.exportbutton.press = function() print('Exporting Board...') end
 
 	boardslistgui.deletebutton = vgui:coloredbutton(
 		boardslistui.deletebutton.text
@@ -160,7 +211,6 @@ function love.load()
 	boardslistgui.createtextbox = vgui:input('', { x=boardslistui.startx+boardslistui.createbutton.w + boardslistui.spacing, y=boardslistui.starty, w=boardslistui.createbutton.w*4, h=boardslistui.createbutton.h })
 	boardslistgui.createtextbox.done = createBoardCallback
 	boardslistgui.createtextbox.click = function()
-		log.debug'Writing to textbox'
 		ignoreKeyInputs = true
 		boardslistgui.createtextbox:setfocus(true)
 	end
@@ -198,15 +248,18 @@ function love.update(dt)
 	elseif currentMenu == menus.board then
 		camera:update(dt, settings.useSmoothDrag)
 		mx, my = camera:getScreenPos(love.mouse.getPosition())
-		-- update board objects
-		local time = love.timer.getTime()
-		for bob in myBobjects() do bob:update() end
-		telemetry.updateTimeBobjects = love.timer.getTime() - time
 
-		-- update connections
-		time = love.timer.getTime()
-		for con in myConnections() do
-			con.inputpin.state = con.outputpin.state
+		local time = love.timer.getTime()
+		for i=1,updatesPerTick do
+			-- update board objects
+			for bob in myBobjects() do bob:update() end
+			telemetry.updateTimeBobjects = love.timer.getTime() - time
+
+			-- update connections
+			time = love.timer.getTime()
+			for con in myConnections() do
+				con.inputpin.state = con.outputpin.state
+			end
 		end
 		telemetry.updateTimeConnections = love.timer.getTime() - time
 	elseif currentMenu == menus.list then
@@ -229,7 +282,6 @@ function love.update(dt)
 	end
 	telemetry.dt = dt
 
-	computeThreadUPS = love.thread.getChannel("ups"):pop() or computeThreadUPS
 	messages.update(dt)
 end
 
@@ -242,22 +294,23 @@ function love.draw()
 	love.graphics.applyTransform(menuTransform)
 	-- ##############################[  ABOUT  ]##############################
 	if shouldShowMenu(menus.about) then
-		love.graphics.print("About", bigfont, 10, 10)
+		love.graphics.print("Über", bigfont, 20, 10)
 	end
 
 	love.graphics.translate(love.graphics.getWidth(), 0)
 	-- ##############################[  SETTINGS  ]##############################
 	if shouldShowMenu(menus.settings) then
-		love.graphics.print("Settings", bigfont, 10, 10)
+		love.graphics.print("Einstellungen", bigfont, 20, 10)
 	end
 
 	love.graphics.translate(love.graphics.getWidth(), 0)	
 	-- ##############################[  TITLE  ]##############################
 		if shouldShowMenu(menus.title) then
-		love.graphics.print('L.C.S. (Version '..version..')', hugefont, 10, 10)
+		love.graphics.print('L.C.S.', hugefont, 20, 10)
+		love.graphics.print(' Version '..version, font, 20, 140)
 		love.graphics.print('> Boards', namefont, 20, 200)
-		love.graphics.print('> Settings', namefont, 20, 250)
-		love.graphics.print('> About', namefont, 20, 300)
+		love.graphics.print('> Einstellungen', namefont, 20, 250)
+		love.graphics.print('> Über', namefont, 20, 300)
 	end
 
 	love.graphics.translate(love.graphics.getWidth(), 0)
@@ -268,7 +321,8 @@ function love.draw()
 
 		mx,my = love.mouse.getPosition()
 		love.graphics.setColor(1, 1, 1)
-		love.graphics.print("Boards:", bigfont, 10, 10)
+		love.graphics.print("Boards:", bigfont, 15, 10)
+		love.graphics.print("F12 = Explorer", font, 20, 100)
 		
 		boardslistgui.renamebutton.absx = 0
 		boardslistgui.renamebutton.absy = -1000
@@ -297,17 +351,17 @@ function love.draw()
 			love.graphics.rectangle("line", x, y, w, h, rounding)
 			love.graphics.setColor(boardslistui.colors.text)
 			love.graphics.print(text, namefont, x + padding, y + padding)
-			local sizelength = font:getWidth('Size: 00000KB') + padding*4
-			love.graphics.print(lume.format('Size: {1}KB', {lume.round(board.size/1024)}), x + padding, y+padding + namefont:getHeight()+padding)
-			love.graphics.print(lume.format('Last Modified: {day}.{month}.{year}', os.date("*t", board.lastmodified)), x + padding + sizelength, y+padding + namefont:getHeight()+padding)
+			local sizelength = font:getWidth('Größe: 00000KB') + padding*4
+			love.graphics.print(lume.format('Größe: {1}KB', {lume.round(board.size/1024)}), x + padding, y+padding + namefont:getHeight()+padding)
+			love.graphics.print(lume.format('Zuletzt Bearbeitet: {day}.{month}.{year}', os.date("*t", board.lastmodified)), x + padding + sizelength, y+padding + namefont:getHeight()+padding)
 
 			if hovered and currentMenu == menus.list then
-				boardslistgui.renamebutton.absx = x + w - boardslistui.renamebutton.w*3 - padding - boardslistui.spacing*2
-				boardslistgui.renamebutton.absy = y + padding				
-				boardslistgui.exportbutton.absx = x + w - boardslistui.exportbutton.w*2 - padding - boardslistui.spacing
-				boardslistgui.exportbutton.absy = y + padding
-				boardslistgui.deletebutton.absx = x + w - boardslistui.deletebutton.w - padding
-				boardslistgui.deletebutton.absy = y + padding
+				boardslistgui.renamebutton.absx = x+w-boardslistui.renamebutton.w-boardslistui.exportbutton.w-boardslistui.deletebutton.w-padding-boardslistui.spacing*2
+				boardslistgui.renamebutton.absy = y+padding				
+				boardslistgui.exportbutton.absx = x+w-boardslistui.exportbutton.w-boardslistui.deletebutton.w-padding-boardslistui.spacing
+				boardslistgui.exportbutton.absy = y+padding
+				boardslistgui.deletebutton.absx = x+w-boardslistui.deletebutton.w-padding
+				boardslistgui.deletebutton.absy = y+padding
 			end
 		end
 	end
@@ -390,7 +444,7 @@ function love.draw()
 			love.graphics.setLineWidth(2)
 			if selectedPinID > 0 then
 				local pinPos = getPinPosByID(selectedPinID)
-				love.graphics.print("Selected Pin: "..selectedPinID, 20, 80)
+				-- love.graphics.print("Selected Pin: "..selectedPinID, 20, 80)
 				if pinPos then
 					local offset = 80
 					local curve = love.math.newBezierCurve({ 
@@ -414,8 +468,8 @@ function love.draw()
 			love.graphics.rectangle("line", w/4, h - ph/2-10, w/4*2, ph/2, 6)
 
 			love.graphics.setColor(1, 1, 1)
-			love.graphics.print("OUTPUT ID: "..tostring(plotterID-2000), w/4+pw+10, h-ph/2-5)
-			love.graphics.print("FREQUENCY: "..tostring(0), w/4+pw+10, h-ph/2+30)
+			love.graphics.print("AUSGANG ID: "..tostring(plotterID-2000), w/4+pw+10, h-ph/2-5)
+			love.graphics.print("FREQUENZ: "..tostring(0), w/4+pw+10, h-ph/2+30)
 
 			if plotterID-2000 > 0 then
 				local per = getPeripheralByID(plotterID)
@@ -435,37 +489,15 @@ function love.draw()
 			end
 		end
 
-		if settings.showHelp then -- Color this shit
+		if settings.showHelp then
 			love.graphics.setColor(1, 1, 1)
-			love.graphics.print(nt[[
-				1-AND
-				2-OR
-				3-NOT
-				4-NAND
-				5-NOR
-				6-XOR
-				7-XNOR
-				8-INPUT
-				9-CLOCK
-				0-OUTPUT
-				b-BUFFER
-				
-				ESC-TOGGLE MENU
-				STRG+S-SAVE
-				STRG+L-LOAD
-				STRG+C-COPY
-				STRG+V-PASTE
-				STRG+R-RESET
-				STRG+D-DEFAULTS
-				STRG+P-PLOTTER
-				STRG+Q-QUIT
-				]], 10, 150)
+			love.graphics.print(helpText, 10, 150)
 		end
 
 		if settings.showDebug then
 			love.graphics.setColor(0.6, 1, 0.6)
 			love.graphics.print(
-				lume.format("Board Objects: {1}\nConnections: {2}\n", {lume.count(getBobjects()), lume.count(connections)}),
+				lume.format("Board Objekte: {1}\nVerbindungen: {2}\n", {lume.count(getBobjects()), lume.count(connections)}),
 				love.graphics.getWidth()-250, 100
 			)
 		
@@ -481,16 +513,16 @@ function love.draw()
 				nt[[
 					Timings:
 					
-					Board Objects Update: %s
-					Connections Update: %s
+					Board Objekte Update: %s
+					Verbindungen  Update: %s
 					
-					Board Objects Draw: %s
-					Connections Draw: %s
+					Board Objekte Render: %s
+					Verbindungen  Render: %s
 					
-					Total: %s
+					Gesamt: %s
 
 
-					Love Stats:
+					Love2D Statistiken:
 
 					Drawcalls: %d
 					Canvas Switches: %d
@@ -516,19 +548,17 @@ function love.draw()
 			love.graphics.getWidth()-300, 400)
 		end
 		
-		love.graphics.setColor(1, 1, 1)
 		if settings.showFPS then
+			love.graphics.setColor(1, 1, 1)
 			local performancecolor = {gradient(love.timer.getFPS()/maxFPSRecorded, {0.500, 0.500, -3.142}, {0.980, 0.498, 0.500}, {0.060, 0.358, 1.000}, {0.168, 0.608, 0.667})}
 			love.graphics.print(
-				-- lume.format(
-				-- 	"FPS: {1} | {2}% Lag | Current Board: {3} (Press [F1] for Help)",
-				-- 	{tostring(love.timer.getFPS()), lume.round(100-love.timer.getFPS()/maxFPSRecorded*100), currentBoard}
-				-- ),  {0.500 0.500 -3.142},{0.980 0.498 0.500},{0.060 0.358 1.000},{0.168 0.608 0.667}
 				{
 					{1,1,1}, "FPS: ", performancecolor, love.timer.getFPS(),
-					{1,1,1}, " | Lag: ", performancecolor, tostring(lume.round(100-love.timer.getFPS()/maxFPSRecorded*100))..'%',
-					{1,1,1}, " | Current Board: ", {0.6, 0.89, 0.63}, currentBoard,
-					{1,1,1}, " (Press [F1] for Help)",
+					{1,1,1}, " | Lag: ", performancecolor, string.format('%2d%%', lume.round(100-love.timer.getFPS()/maxFPSRecorded*100)),
+					{1,1,1}, " | UPT: ", {0.48, 0.86, 0.92}, updatesPerTick,
+					{1,1,1}, " | Effektive UPS: ", {0.48, 0.86, 0.92}, updatesPerTick*love.timer.getFPS(),
+					{1,1,1}, " | Offenes Board: ", {0.54, 0.71, 0.93}, currentBoard,
+					{1,1,1}, " | ([F1] für Hilfe)",
 				},
 				10, 10
 			)
@@ -540,7 +570,7 @@ function love.draw()
 
 	-- OTHERS
 	if SAVECATCHMODE then
-		love.graphics.print({{0.6, 0.89, 0.63}, 'SAVE CATCH MODE ENABLED'}, love.graphics.getWidth()-(font:getWidth('SAVE CATCH MODE ENABLED'))-10, 10)
+		love.graphics.print({{0.6, 0.89, 0.63}, 'SAVE CATCH MODUS AN'}, love.graphics.getWidth()-font:getWidth('SAVE CATCH MODUS AN')-10, 10)
 	end
 
 	love.graphics.setScissor()
@@ -551,8 +581,9 @@ function boardStencil()
 end
 
 function love.quit()
-	-- local id = love.thread.getChannel("kill"):push(true)
-	-- repeat until love.thread.getChannel("kill"):hasRead(id)
+	if currentMenu == menus.board then
+		saveBoard()
+	end
 end
 
 -- ==========================================================[ INPUT FUNCTIONS ]===============================================================--
@@ -749,22 +780,23 @@ function love.wheelmoved(dx, dy)
 		if love.keyboard.isDown("lshift") then
 			for bob in myBobjects() do
 				if bob:isInside(love.mouse.getX(), love.mouse.getY()) then
-					if bob.name == "CLOCK" then
+					if bob.__class.__name == "CLOCK" then
 						bob.tickspeed = bob.tickspeed + dy
 						if bob.tickspeed < 1 then bob.tickspeed = 1 end
-					elseif bob.type == "GATE" then
+					elseif bob.__class.__name == "AND" or bob.__class.__name == "OR" then
 						if dy > 0 then
 							bob:addPin()
 						elseif dy < 0 then
 							bob:removePin()
 						end
-					elseif bob.name == "BUFFER" then
+					elseif bob.__class.__name == "BUFFER" then
 						bob.ticks = bob.ticks + dy
 						if bob.ticks < 1 then bob.ticks = 1 end
 					end
 				end
 			end
 		elseif love.keyboard.isDown("lctrl") then
+			updatesPerTick = lume.clamp(updatesPerTick + dy, 1, 50)
 		else
 			camera:zoom(dy)
 		end
@@ -804,6 +836,12 @@ function saveKeyPressed(key)
 		end
 		love.window.setMode(w, h, {fullscreen=settings.fullscreen, resizable=true, vsync=false, minwidth=100, minheight=100})
 		love.window.setFullscreen(settings.fullscreen, "exclusive")
+	end)
+
+	whenKeyPressed(key, 'f12', 'none', nil, function()
+		local savedir = string.gsub(love.filesystem.getSaveDirectory(), '/', '\\')
+		log.debug('Opening save directory: '..savedir)
+		io.popen('explorer '..savedir):close()
 	end)
 
 	-- BOARD MENU
@@ -947,12 +985,6 @@ function saveKeyPressed(key)
 		end
 	end)
 
-	-- whenKeyPressed(key, any{'1','2','3','4','5','6','7','8','9'}, 'alt', currentMenu==menus.board, function()
-	-- 	saveBoard()
-	-- 	resetBoard()
-	-- 	currentBoard = tonumber(key)
-	-- 	loadBoard()
-	-- end)
 	whenKeyPressed(key, '1', 'alt', currentMenu==menus.board and currentBoard ~= boardslist[1].name, function()
 		saveBoard()
 		currentBoard = boardslist[1].name
@@ -982,14 +1014,18 @@ function saveKeyPressed(key)
 		loadBoard()
 	end)
 
-
 	whenKeyPressed(key, '1', 'none', currentMenu==menus.board, function() addPeripheral(classes.INPUT (mx - classes.PERIPHERAL:getWidth()/2, my - classes.PERIPHERAL:getHeight()/2)) end)
 	whenKeyPressed(key, '2', 'none', currentMenu==menus.board, function() addPeripheral(classes.OUTPUT(mx - classes.PERIPHERAL:getWidth()/2, my - classes.PERIPHERAL:getHeight()/2)) end)
-	whenKeyPressed(key, '3', 'none', currentMenu==menus.board, function() addPeripheral(classes.CLOCK (mx - classes.PERIPHERAL:getWidth()/2, my - classes.PERIPHERAL:getHeight()/2)) end)
-	whenKeyPressed(key, '4', 'none', currentMenu==menus.board, function() addPeripheral(classes.BUFFER(mx - classes.PERIPHERAL:getWidth()/2, my - classes.PERIPHERAL:getHeight()/2)) end)
-	whenKeyPressed(key, '5', 'none', currentMenu==menus.board, function() addGate(classes.AND (mx - classes.GATE:getWidth()/2, my - classes.GATE:getHeight(2)/2)) end)
-	whenKeyPressed(key, '6', 'none', currentMenu==menus.board, function() addGate(classes.OR  (mx - classes.GATE:getWidth()/2, my - classes.GATE:getHeight(2)/2)) end)
-	whenKeyPressed(key, '7', 'none', currentMenu==menus.board, function() addGate(classes.NOT (mx - classes.GATE:getWidth()/2, my - classes.GATE:getHeight(1)/2)) end)
+	whenKeyPressed(key, '3', 'none', currentMenu==menus.board, function() addGate(classes.NOT (mx - classes.GATE:getWidth()/2, my - classes.GATE:getHeight(2)/2)) end)
+	whenKeyPressed(key, '4', 'none', currentMenu==menus.board, function() addGate(classes.AND (mx - classes.GATE:getWidth()/2, my - classes.GATE:getHeight(2)/2)) end)
+	whenKeyPressed(key, '5', 'none', currentMenu==menus.board, function() addGate(classes.OR  (mx - classes.GATE:getWidth()/2, my - classes.GATE:getHeight(2)/2)) end)
+	whenKeyPressed(key, '6', 'none', currentMenu==menus.board, function() addGate(classes.XOR (mx - classes.GATE:getWidth()/2, my - classes.GATE:getHeight(2)/2)) end)
+	whenKeyPressed(key, '7', 'none', currentMenu==menus.board, function() addGate(classes.NAND(mx - classes.GATE:getWidth()/2, my - classes.GATE:getHeight(2)/2)) end)
+	whenKeyPressed(key, '8', 'none', currentMenu==menus.board, function() addGate(classes.NOR (mx - classes.GATE:getWidth()/2, my - classes.GATE:getHeight(2)/2)) end)
+	whenKeyPressed(key, '9', 'none', currentMenu==menus.board, function() addGate(classes.XNOR(mx - classes.GATE:getWidth()/2, my - classes.GATE:getHeight(2)/2)) end)
+
+	whenKeyPressed(key, 'b', 'none', currentMenu==menus.board, function() addPeripheral(classes.CLOCK (mx - classes.PERIPHERAL:getWidth()/2, my - classes.PERIPHERAL:getHeight()/2)) end)
+	whenKeyPressed(key, 'c', 'none', currentMenu==menus.board, function() addPeripheral(classes.BUFFER(mx - classes.PERIPHERAL:getWidth()/2, my - classes.PERIPHERAL:getHeight()/2)) end)
 
 
 	whenKeyPressed(key, 'space', 'none', currentMenu==menus.board, function()

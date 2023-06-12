@@ -1,29 +1,3 @@
--- vector_metatable = {
---     __add: (a,b) => vec2(a.x+b.x, a.y+b.y)
---     __sub: (a,b) => vec2(a.x-b.x, a.y-b.y)
---     __mul: (a,b) => vec2(a.x*b.x, a.y*b.y)
---     __div: (a,b) => vec2(a.x/b.x, a.y/b.y)
---     __mod: (a,b) => vec2(a.x%b.x, a.y%b.y)
---     __pow: (a,b) => vec2(a.x^b.x, a.y^b.y)
---     __unm: (a) => vec2(-a.x, -a.y)
---     __concat: (a,b) => vec2(a.x..b.x, a.y..b.y)
---     __len: (a) => (a.x^2 + a.y^2)^0.5
---     __eq: (a,b) => a.x == b.x and a.y == b.y
---     __lt: (a,b) => a.x < b.x and a.y < b.y
---     __le: (a,b) => a.x <= b.x and a.y <= b.y
---     __index: (a,b) => a[b]
---     __newindex: (a,b,c) => a[b] = c
---     __call: (a,b) => a(b)
---     __tostring: (a) => "vec2(#{a.x}, #{a.y})"
---     __metatable: {}
--- }
-
--- distance = (x1,y1,x2,y2,squared) ->
---     if squared
---         (x1-x2)^2 + (y1-y2)^2
---     else
---         math.sqrt((x1-x2)^2 + (y1-y2)^2)
-
 lume = require "lib.lume"
 log = require "lib.log"
 
@@ -441,7 +415,7 @@ class OUTPUT extends PERIPHERAL
 
     drawMe: =>
         love.graphics.setColor(1, 1, 1)
-        printCentered("OUT #{@id-2000}", @pos.x + (@@getWidth!/2), @pos.y + (@@getHeight!/2))
+        printCentered("AUSGANG", @pos.x + (@@getWidth!/2), @pos.y + (@@getHeight!/2))
             
 
 class BUFFER extends PERIPHERAL

@@ -1001,7 +1001,7 @@ do
     end,
     drawMe = function(self)
       love.graphics.setColor(1, 1, 1)
-      return printCentered("OUT " .. tostring(self.id - 2000), self.pos.x + (self.__class:getWidth() / 2), self.pos.y + (self.__class:getHeight() / 2))
+      return printCentered("AUSGANG", self.pos.x + (self.__class:getWidth() / 2), self.pos.y + (self.__class:getHeight() / 2))
     end
   }
   _base_0.__index = _base_0
