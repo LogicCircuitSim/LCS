@@ -444,7 +444,7 @@ class BUFFER extends PERIPHERAL
 
     drawMe: =>
         love.graphics.setColor(1, 1, 1)
-        printCentered("BUFFER \n#{@ticks} tks", @pos.x + (@@getWidth!/2), @pos.y + (@@getHeight!/4), 2)
+        printCentered("PUFFER \n#{@ticks} tks", @pos.x + (@@getWidth!/2), @pos.y + (@@getHeight!/4), 2)
                 
             
 
