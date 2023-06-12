@@ -753,7 +753,8 @@ GUI.newtype("input", {
 	cursormdelete = function(e)
 		if e.cursor > e.valuelen then return end
 		local offset = e.cursoroffset
-		local nextoffset = utf8.offset(e.value, 2, offset)
+		local nextoffset = offset
+		pcall(function() nextoffset = utf8.offset(e.value, 2, offset) end)
 		
 		if e.cursor == 1 then e.value = e.value:sub(nextoffset)
 		elseif e.cursor == e.valuelen then e.value = e.value:sub(1, offset - 1)
@@ -773,7 +774,11 @@ GUI.newtype("input", {
 		local savecursorlife = e.cursorlife
 		e.cursorlife = 0
 
-		if key == "backspace" then if e:cursormleft() then e:cursormdelete() end
+		if key == "backspace" then
+			-- if love.keyboard.isDown('lctrl') then e:clear()
+			-- else
+				if e:cursormleft() then e:cursormdelete() end
+			-- end
 		elseif key == "delete" then e:cursormdelete()
 		elseif key == "left" then e:cursormleft()
 		elseif key == "right" then e:cursormright()

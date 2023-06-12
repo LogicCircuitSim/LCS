@@ -5,7 +5,7 @@ print'Starting...'
 -- local unpack = unpack or table.unpack
 local startTime = love.timer.getTime()
 local log = require 'lib.log'
-log.level = 'trace'
+log.level = 'debug'
 require 'fancyerror'
 
 log.info'Loading Libraries...'
@@ -552,6 +552,7 @@ function love.draw()
 
 	-- OTHERS
 	if SAVECATCHMODE then
+		love.graphics.setColor(1, 1, 1)
 		love.graphics.print({{0.6, 0.89, 0.63}, 'SAVE CATCH MODUS AN'}, love.graphics.getWidth()-font:getWidth('SAVE CATCH MODUS AN')-10, 10)
 	end
 
@@ -765,7 +766,7 @@ function love.wheelmoved(dx, dy)
 					if bob.__class.__name == "CLOCK" then
 						bob.tickspeed = bob.tickspeed + dy
 						if bob.tickspeed < 1 then bob.tickspeed = 1 end
-					elseif bob.__class.__name == "AND" or bob.__class.__name == "OR" then
+					elseif bob.__class.__name == "AND" or bob.__class.__name == "NAND" or bob.__class.__name == "OR" then
 						if dy > 0 then
 							bob:addPin()
 						elseif dy < 0 then
@@ -1021,8 +1022,8 @@ function saveKeyPressed(key)
 	whenKeyPressed(key, '8', 'none', currentMenu==menus.board, function() addGate(classes.NOR (mx - classes.GATE:getWidth()/2, my - classes.GATE:getHeight(2)/2)) end)
 	whenKeyPressed(key, '9', 'none', currentMenu==menus.board, function() addGate(classes.XNOR(mx - classes.GATE:getWidth()/2, my - classes.GATE:getHeight(2)/2)) end)
 
-	whenKeyPressed(key, 'b', 'none', currentMenu==menus.board, function() addPeripheral(classes.CLOCK (mx - classes.PERIPHERAL:getWidth()/2, my - classes.PERIPHERAL:getHeight()/2)) end)
-	whenKeyPressed(key, 'c', 'none', currentMenu==menus.board, function() addPeripheral(classes.BUFFER(mx - classes.PERIPHERAL:getWidth()/2, my - classes.PERIPHERAL:getHeight()/2)) end)
+	whenKeyPressed(key, 'c', 'none', currentMenu==menus.board, function() addPeripheral(classes.CLOCK (mx - classes.PERIPHERAL:getWidth()/2, my - classes.PERIPHERAL:getHeight()/2)) end)
+	whenKeyPressed(key, 'b', 'none', currentMenu==menus.board, function() addPeripheral(classes.BUFFER(mx - classes.PERIPHERAL:getWidth()/2, my - classes.PERIPHERAL:getHeight()/2)) end)
 
 
 	whenKeyPressed(key, 'space', 'none', currentMenu==menus.board, function()
