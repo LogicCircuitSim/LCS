@@ -21,7 +21,6 @@ local loadsubmodule = function(GUI, name)
 end
 
 local utf8 = require("utf8")
-local log = require("log")
 
 local min, max = math.min, math.max
 local floor, abs = math.floor, math.abs
