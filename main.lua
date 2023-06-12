@@ -790,7 +790,6 @@ end
 -- #################################################################
 
 function love.keypressed(key, scancode, isrepeat)
-	vgui:keypress(key)
 	if key == 'insert' then
 		SAVECATCHMODE = not SAVECATCHMODE
 		log.warn('SAVECATCHMODE: '..tostring(SAVECATCHMODE))
@@ -803,6 +802,7 @@ function love.keypressed(key, scancode, isrepeat)
 end
 
 function saveKeyPressed(key)
+	vgui:keypress(key)
 	-- ANY MENU
 	whenKeyPressed(key, 'escape', 'none', not dontescape, function()
 		switchToMenu('back')
@@ -1032,6 +1032,7 @@ function saveKeyPressed(key)
 end
 
 function devKeyPressed(key)
+	vgui:keypress(key)
 	-- ANY MENU
 	if checkKeyPressed(key, 'escape', 'none', not dontescape) then
 		if currentMenu>menus.title then currentMenu=currentMenu-1
