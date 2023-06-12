@@ -5,7 +5,7 @@ print'Starting...'
 -- local unpack = unpack or table.unpack
 local startTime = love.timer.getTime()
 local log = require 'lib.log'
-log.level = 'debug'
+log.level = 'trace'
 require 'fancyerror'
 
 log.info'Loading Libraries...'
@@ -790,6 +790,7 @@ end
 -- #################################################################
 
 function love.keypressed(key, scancode, isrepeat)
+	vgui:keypress(key)
 	if key == 'insert' then
 		SAVECATCHMODE = not SAVECATCHMODE
 		log.warn('SAVECATCHMODE: '..tostring(SAVECATCHMODE))
@@ -802,7 +803,6 @@ function love.keypressed(key, scancode, isrepeat)
 end
 
 function saveKeyPressed(key)
-	vgui:keypress(key)
 	-- ANY MENU
 	whenKeyPressed(key, 'escape', 'none', not dontescape, function()
 		switchToMenu('back')
@@ -1292,9 +1292,9 @@ end
 function createBoardCallback()	
 	if createBoard(boardslistgui.createtextbox.value) then
 		boardslistgui.createtextbox.value = ''
-		boardslistgui.createtextbox:cursorxupdate()
 		boardslistgui.createtextbox:setfocus(false)
 		updateBoardsList()
+		vgui:update()
 	end
 end
 
