@@ -728,14 +728,14 @@ GUI.newtype("input", {
 	cursormleft = function(e)
 		if e.cursor <= 1 then return end
 		e.cursor = e.cursor - 1
-		e.cursoroffset = utf8.offset(e.value, -1, e.cursoroffset)
+		pcall(function() e.cursoroffset = utf8.offset(e.value, -1, e.cursoroffset) end)
 		e:cursorxupdate()
 		return true
 	end,
 	cursormright = function(e)
 		if e.cursor > e.valuelen then return end
 		e.cursor = e.cursor + 1
-		e.cursoroffset = utf8.offset(e.value, 2, e.cursoroffset)
+		pcall(function() e.cursoroffset = utf8.offset(e.value, 2, e.cursoroffset) end)
 		e:cursorxupdate()
 		return true
 	end,
