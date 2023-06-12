@@ -45,7 +45,7 @@ local helpText = nt[[
 	8 = NOR
 	9 = XNOR
 	c = CLOCK
-	b = BUFFER
+	b = PUFFER
 	
 	ESC    = ZURÜCK
 	STRG+S = SPEICHERN
@@ -53,9 +53,15 @@ local helpText = nt[[
 	STRG+C = KOPIEREN
 	STRG+V = EINFÜGEN
 	STRG+R = RESET
-	STRG+D = STANARDS
+	STRG+D = DEFAULTS
 	STRG+P = PLOTTER
 	STRG+Q = BEENDEN
+
+	F2 = DEBUG
+	F3 = FPS
+	F4 = NACHRICHTEN
+	F5 = SMOOTHING
+	F11 = VOLLBILD
 ]]
 
 local helpText2 = nt[[
@@ -558,7 +564,7 @@ function love.draw()
 					{1,1,1}, " | UPT: ", {0.48, 0.86, 0.92}, updatesPerTick,
 					{1,1,1}, " | Effektive UPS: ", {0.48, 0.86, 0.92}, updatesPerTick*love.timer.getFPS(),
 					{1,1,1}, " | Offenes Board: ", {0.54, 0.71, 0.93}, currentBoard,
-					{1,1,1}, " | ([F1] für Hilfe)",
+					{1,1,1}, " | [F1] für Hilfe",
 				},
 				10, 10
 			)

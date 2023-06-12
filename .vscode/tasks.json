@@ -6,7 +6,7 @@
         {
             "label": "Build LOVE File",
             "type": "shell",
-            "command": ".\\buildlovefile.bat",
+            "command": ".\\build.bat",
             "problemMatcher": []
         },
         {
