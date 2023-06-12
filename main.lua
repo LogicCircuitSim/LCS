@@ -1291,7 +1291,7 @@ end
 
 function createBoardCallback()	
 	if createBoard(boardslistgui.createtextbox.value) then
-		boardslistgui.createtextbox.value = ''
+		boardslistgui.createtextbox:clear()
 		boardslistgui.createtextbox:setfocus(false)
 		updateBoardsList()
 		vgui:update()

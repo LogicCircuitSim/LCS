@@ -761,13 +761,19 @@ GUI.newtype("input", {
 		e.valuelen = e.valuelen - 1
 		return true
 	end,
+	clear = function(e)
+		e.value = ""
+		e.valuelen = 0
+		e.cursor = 0
+		e.cursoroffset = 1
+		e.cursorx = 0
+	end,
 	
 	keypress = function(e, key)
 		local savecursorlife = e.cursorlife
 		e.cursorlife = 0
 
-		if key == "backspace" then
-			if e:cursormleft() then e:cursormdelete() end
+		if key == "backspace" then if e:cursormleft() then e:cursormdelete() end
 		elseif key == "delete" then e:cursormdelete()
 		elseif key == "left" then e:cursormleft()
 		elseif key == "right" then e:cursormright()
