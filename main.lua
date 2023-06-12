@@ -1301,6 +1301,7 @@ end
 function createBoard(name)
 	ignoreKeyInputs = false
 	if not name or name == '' then return false end
+	name = lume.trim(name)
 	log.debug(lume.format('Creating Board [{1}]...', {name}))
 	local badchars = [[#%&{}\<>*?/$!'":@+`|=]]
 	local badcharstable = {'#', '%%', '&', '{', '}', '\\', '<', '>', '*', '?', '/', '$', '!', '\'', '"', ':', '@', '+', '`', '|', '='}
