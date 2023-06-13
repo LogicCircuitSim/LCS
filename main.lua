@@ -2,7 +2,7 @@
 local version = require('settings').version
 print('\nVersion: '..version)
 print'Starting...'
--- local unpack = unpack or table.unpack
+
 local startTime = love.timer.getTime()
 local log = require 'lib.log'
 log.level = 'debug'
@@ -63,7 +63,6 @@ local helpText = nt[[
 	F5 = SMOOTHING
 	F11 = VOLLBILD
 ]]
-
 
 local settings = {
 	useSmoothDrag = true,
@@ -760,9 +759,10 @@ end
 -- #################################################################
 function love.wheelmoved(dx, dy)
 	if currentMenu == menus.board then
+		x,y = camera:getScreenPos(love.mouse.getPosition())
 		if love.keyboard.isDown("lshift") then
 			for bob in myBobjects() do
-				if bob:isInside(love.mouse.getX(), love.mouse.getY()) then
+				if bob:isInside(x, y) then
 					if bob.__class.__name == "CLOCK" then
 						bob.tickspeed = bob.tickspeed + dy
 						if bob.tickspeed < 1 then bob.tickspeed = 1 end
@@ -1758,7 +1758,7 @@ function addGroup()
 		end
 
 		for i, id in ipairs(selection.ids) do
-			if not lume.any(groups, function(group) return lume.find(group.ids, bob.id) end) then
+			if not lume.any(groups, function(group) return lume.find(group.ids, id) end) then
 				local bob = getBobByID(id)
 				if bob.pos.x < group.x1 then
 					group.x1 = bob.pos.x
@@ -1776,7 +1776,7 @@ function addGroup()
 			end
 		end
 
-		if group.ids > 1 then
+		if lume.count(group.ids) > 1 then
 			group.x1 = group.x1 - padding
 			group.y1 = group.y1 - padding
 			group.x2 = group.x2 + padding
