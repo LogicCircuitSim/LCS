@@ -472,8 +472,7 @@ class CLOCK extends PERIPHERAL
         love.graphics.setColor(1, 1, 1)
         printCentered("CLOCK\n#{@tickspeed} Hz", @pos.x + (@@getWidth!/2), @pos.y + (@@getHeight!/4), 2)
 
-
-
+        
 loadINPUTPIN = (pin) ->
     newpin = INPUTPIN(pin.parentID)
     newpin.id = pin.id
