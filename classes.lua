@@ -1071,11 +1071,11 @@ do
   _base_0.__index = _base_0
   setmetatable(_base_0, _parent_0.__base)
   _class_0 = setmetatable({
-    __init = function(self, x, y)
+    __init = function(self, x, y, ticks)
       _class_0.__parent.__init(self, x, y, 1, 1)
       self.name = "BUFFER"
       log.trace('new BUFFER')
-      self.ticks = 5
+      self.ticks = ticks or 5
       self.tickcount = 0
       self.isBuffering = false
     end,
@@ -1130,11 +1130,11 @@ do
   _base_0.__index = _base_0
   setmetatable(_base_0, _parent_0.__base)
   _class_0 = setmetatable({
-    __init = function(self, x, y)
+    __init = function(self, x, y, tickspeed)
       _class_0.__parent.__init(self, x, y, 0, 1)
       self.name = "CLOCK"
       log.trace('new CLOCK')
-      self.tickspeed = 1
+      self.tickspeed = tickspeed or 1
       self.ticks = 1 / self.tickspeed
       self.lastMicroSec = love.timer.getTime()
     end,
@@ -1221,14 +1221,14 @@ loadPERIPHERAL = function(peripheraldata)
   if peripheraldata.name == "INPUT" then
     newperipheral = INPUT(peripheraldata.pos.x, peripheraldata.pos.y, peripheraldata.inputpincount)
   elseif peripheraldata.name == "CLOCK" then
-    peripheraldata.tickspeed = peripheraldata.tickspeed
-    peripheraldata.lastMicroSec = love.timer.getTime()
     newperipheral = CLOCK(peripheraldata.pos.x, peripheraldata.pos.y, peripheraldata.inputpincount)
+    newperipheral.tickspeed = peripheraldata.tickspeed
+    newperipheral.lastMicroSec = love.timer.getTime()
   elseif peripheraldata.name == "BUFFER" then
-    peripheraldata.ticks = peripheraldata.ticks
-    peripheraldata.tickcounter = 0
-    peripheraldata.isBuffering = false
     newperipheral = BUFFER(peripheraldata.pos.x, peripheraldata.pos.y, peripheraldata.inputpincount)
+    newperipheral.ticks = peripheraldata.ticks
+    newperipheral.tickcounter = 0
+    newperipheral.isBuffering = false
   elseif peripheraldata.name == "OUTPUT" then
     newperipheral = OUTPUT(peripheraldata.pos.x, peripheraldata.pos.y, peripheraldata.inputpincount)
   else

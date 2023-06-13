@@ -1379,20 +1379,6 @@ function shouldShowMenu(menu)
 	return menu==currentMenu or menu==currentMenu-1 or menu==currentMenu+1
 end
 
-function prepForSave(t)
-	local newTable = lume.deepclone(t)
-	-- remove functions
-	for k, v in pairs(newTable) do
-		if type(v) == 'function' then
-			newTable[k] = nil
-		elseif type(v) == 'table' then
-			newTable[k] = prepForSave(v)
-		end
-	end
-	
-	return newTable
-end
-
 function any(tbl)
 	tbl.mode = 'any'
 	return tbl
@@ -1620,6 +1606,19 @@ function addConnection(con)
 	end
 end
 
+function prepForSave(t)
+	local newTable = lume.deepclone(t)
+	-- remove functions
+	for k, v in pairs(newTable) do
+		if type(v) == 'function' then
+			newTable[k] = nil
+		elseif type(v) == 'table' then
+			newTable[k] = prepForSave(v)
+		end
+	end
+	
+	return newTable
+end
 
 function resetBoard()
 	connections = {}
@@ -1737,26 +1736,6 @@ function addGroup()
 		local group = { x1 = math.huge, y1 = math.huge, x2 = -math.huge, y2 = -math.huge, ids = {}}
 		local padding = 20
 
-		for bob in myBobjects() do
-			log.trace(bob.id)
-			if lume.find(selection.ids, bob.id) and not lume.any(groups, function(group) return lume.find(group.ids, bob.id) end) then
-				if bob.pos.x < group.x1 then
-					group.x1 = bob.pos.x
-				end
-				if bob.pos.y < group.y1 then
-					group.y1 = bob.pos.y
-				end
-				if bob.pos.x > group.x2 then
-					group.x2 = bob.pos.x + bob:getWidth() + padding
-				end
-				if bob.pos.y > group.y2 then
-					group.y2 = bob.pos.y + bob:getHeight() + padding
-				end
-
-				lume.push(group.ids, bob.id)
-			end
-		end
-
 		for i, id in ipairs(selection.ids) do
 			if not lume.any(groups, function(group) return lume.find(group.ids, id) end) then
 				local bob = getBobByID(id)
@@ -1775,6 +1754,8 @@ function addGroup()
 				lume.push(group.ids, id)
 			end
 		end
+
+		group.ids = lume.unique(group.ids)
 
 		if lume.count(group.ids) > 1 then
 			group.x1 = group.x1 - padding
