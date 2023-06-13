@@ -419,11 +419,11 @@ class OUTPUT extends PERIPHERAL
             
 
 class BUFFER extends PERIPHERAL
-    new: (x,y) =>
+    new: (x,y,ticks) =>
         super x,y,1,1
         @name = "BUFFER"
         log.trace'new BUFFER'
-        @ticks = 5
+        @ticks = ticks or 5
         @tickcount = 0
         @isBuffering = false
 
@@ -449,11 +449,11 @@ class BUFFER extends PERIPHERAL
             
 
 class CLOCK extends PERIPHERAL
-    new: (x,y) =>
+    new: (x,y,tickspeed) =>
         super x,y,0,1
         @name = "CLOCK"
         log.trace'new CLOCK'
-        @tickspeed = 1 -- ticks per second
+        @tickspeed = tickspeed or 1 -- ticks per second
         @ticks = 1/@tickspeed
         @lastMicroSec = love.timer.getTime!
 
@@ -499,7 +499,7 @@ loadGATE = (gatedata) ->
 	elseif gatedata.name == "XOR" newgate = XOR(gatedata.pos.x, gatedata.pos.y, gatedata.inputpincount)
 	elseif gatedata.name == "XNOR" newgate = XNOR(gatedata.pos.x, gatedata.pos.y, gatedata.inputpincount)
 	elseif gatedata.name == "NOT" newgate = NOT(gatedata.pos.x, gatedata.pos.y, gatedata.inputpincount)
-    else log.warn("Unknown gate type: " .. tostring(gatedata.name))
+    else log.warn("Unknown gate type: "..tostring(gatedata.name))
     newgate.id = gatedata.id
     newgate.state = gatedata.state
     newgate.inputpincount = gatedata.inputpincount
@@ -512,14 +512,14 @@ loadPERIPHERAL = (peripheraldata) ->
     newperipheral = PERIPHERAL(peripheraldata.pos.x, peripheraldata.pos.y, peripheraldata.inputpincount)
     if peripheraldata.name == "INPUT" newperipheral = INPUT(peripheraldata.pos.x, peripheraldata.pos.y, peripheraldata.inputpincount)
 	elseif peripheraldata.name == "CLOCK" then
-		peripheraldata.tickspeed = peripheraldata.tickspeed
-		peripheraldata.lastMicroSec = love.timer.getTime()
 		newperipheral = CLOCK(peripheraldata.pos.x, peripheraldata.pos.y, peripheraldata.inputpincount)
+        newperipheral.tickspeed = peripheraldata.tickspeed 
+		newperipheral.lastMicroSec = love.timer.getTime()
 	elseif peripheraldata.name == "BUFFER" then
-		peripheraldata.ticks = peripheraldata.ticks
-		peripheraldata.tickcounter = 0
-		peripheraldata.isBuffering = false
 		newperipheral = BUFFER(peripheraldata.pos.x, peripheraldata.pos.y, peripheraldata.inputpincount)
+		newperipheral.ticks = peripheraldata.ticks
+		newperipheral.tickcounter = 0
+		newperipheral.isBuffering = false
 	elseif peripheraldata.name == "OUTPUT" then newperipheral = OUTPUT(peripheraldata.pos.x, peripheraldata.pos.y, peripheraldata.inputpincount)
     else log.warn("Unknown peripheral type: " .. tostring(peripheraldata.name))
     newperipheral.id = peripheraldata.id
