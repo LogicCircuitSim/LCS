@@ -20,8 +20,8 @@ local vgui = require('lib.vgui'):new()
 log.info'Loading Fonts...'
 local font = love.graphics.newFont('fonts/main.ttf', 20)
 local namefont = love.graphics.newFont('fonts/main.ttf', 35)
-local bigfont = love.graphics.newFont('fonts/main.ttf', 80)
-local hugefont = love.graphics.newFont('fonts/main.ttf', 120)
+local bigfont = love.graphics.newFont('fonts/aldrich.ttf', 80)
+local hugefont = love.graphics.newFont('fonts/aldrich.ttf', 120)
 font:setFilter('nearest', 'nearest', 8)
 love.graphics.setFont(font)
 
