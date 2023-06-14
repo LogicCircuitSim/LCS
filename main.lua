@@ -290,8 +290,8 @@ function love.draw()
 		love.graphics.print('L.C.S.', hugefont, 20, 10)
 		love.graphics.print(' Version '..version, font, 20, 140)
 		love.graphics.print('> Boards', namefont, 20, 200)
-		love.graphics.print('> Einstellungen', namefont, 20, 250)
-		love.graphics.print('> Über', namefont, 20, 300)
+		-- love.graphics.print('> Einstellungen', namefont, 20, 250)
+		-- love.graphics.print('> Über', namefont, 20, 300)
 	end
 
 	love.graphics.translate(love.graphics.getWidth(), 0)

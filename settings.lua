@@ -6,9 +6,8 @@ settings.savefolder = 'LCS_SAVE_2'
     HD / 720p
     FHD / 1080p
     QHD / WQHD / 1440p
-    UHD / 4K / 2160p
 ]]
-settings.resolution = 'FHD'
+settings.resolution = 'HD'
 
 
 return settings
