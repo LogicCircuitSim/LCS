@@ -1165,54 +1165,6 @@ do
   end
   CLOCK = _class_0
 end
-local SSEG
-do
-  local _class_0
-  local _parent_0 = PERIPHERAL
-  local _base_0 = {
-    update = function(self)
-      self.state = self.inputpin.state
-    end,
-    drawMe = function(self)
-      love.graphics.setColor(1, 1, 1)
-      return printCentered("7SEG", self.pos.x + (self.__class:getWidth() / 2), self.pos.y + (self.__class:getHeight() / 2))
-    end
-  }
-  _base_0.__index = _base_0
-  setmetatable(_base_0, _parent_0.__base)
-  _class_0 = setmetatable({
-    __init = function(self, x, y)
-      _class_0.__parent.__init(self, x, y, 1, 0)
-      self.name = "SSEG"
-      return log.trace('new SSEG')
-    end,
-    __base = _base_0,
-    __name = "SSEG",
-    __parent = _parent_0
-  }, {
-    __index = function(cls, name)
-      local val = rawget(_base_0, name)
-      if val == nil then
-        local parent = rawget(cls, "__parent")
-        if parent then
-          return parent[name]
-        end
-      else
-        return val
-      end
-    end,
-    __call = function(cls, ...)
-      local _self_0 = setmetatable({}, _base_0)
-      cls.__init(_self_0, ...)
-      return _self_0
-    end
-  })
-  _base_0.__class = _class_0
-  if _parent_0.__inherited then
-    _parent_0.__inherited(_parent_0, _class_0)
-  end
-  SSEG = _class_0
-end
 local loadINPUTPIN
 loadINPUTPIN = function(pin)
   local newpin = INPUTPIN(pin.parentID)
