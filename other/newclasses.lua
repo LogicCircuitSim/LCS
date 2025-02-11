@@ -1,5 +1,4 @@
-local lume = require("lib.lume")
-local log = require("lib.log")
+local lume = require("lume")
 local printCentered
 printCentered = function(text, x, y, rows)
   if rows == nil then
@@ -7,6 +6,79 @@ printCentered = function(text, x, y, rows)
   end
   local font = love.graphics.getFont()
   return love.graphics.print(text, x - (font:getWidth(text) / 2), y - (font:getHeight() / (1 + rows)))
+end
+local loadINPUTPIN
+loadINPUTPIN = function(pin)
+  local newpin = INPUTPIN(pin.parentID)
+  newpin.id = pin.id
+  newpin.state = pin.state
+  newpin.pos = vec2(pin.pos.x, pin.pos.y)
+  newpin.isConnected = pin.isConnected
+  return newpin
+end
+local loadOUTPUTPIN
+loadOUTPUTPIN = function(pin)
+  local newpin = OUTPUTPIN(pin.parentID)
+  newpin.id = pin.id
+  newpin.state = pin.state
+  newpin.pos = vec2(pin.pos.x, pin.pos.y)
+  newpin.isConnected = pin.isConnected
+  return newpin
+end
+local loadGATE
+loadGATE = function(gatedata)
+  local newgate = GATE(gatedata.pos.x, gatedata.pos.y, gatedata.inputpincount)
+  if gatedata.name == "AND" then
+    newgate = AND(gatedata.pos.x, gatedata.pos.y, gatedata.inputpincount)
+  elseif gatedata.name == "NAND" then
+    newgate = NAND(gatedata.pos.x, gatedata.pos.y, gatedata.inputpincount)
+  elseif gatedata.name == "OR" then
+    newgate = OR(gatedata.pos.x, gatedata.pos.y, gatedata.inputpincount)
+  elseif gatedata.name == "NOR" then
+    newgate = NOR(gatedata.pos.x, gatedata.pos.y, gatedata.inputpincount)
+  elseif gatedata.name == "XOR" then
+    newgate = XOR(gatedata.pos.x, gatedata.pos.y, gatedata.inputpincount)
+  elseif gatedata.name == "XNOR" then
+    newgate = XNOR(gatedata.pos.x, gatedata.pos.y, gatedata.inputpincount)
+  elseif gatedata.name == "NOT" then
+    newgate = NOT(gatedata.pos.x, gatedata.pos.y, gatedata.inputpincount)
+  else
+    print("ERROR: Unknown gate type: " .. gatedata.name)
+  end
+  newgate.id = gatedata.id
+  newgate.state = gatedata.state
+  newgate.inputpincount = gatedata.inputpincount
+  newgate.inputpins = { }
+  for pin in gatedata.inputpins do
+    table.insert(newgate.inputpins, loadINPUTPIN(pin))
+  end
+  newgate.outputpin = loadOUTPUTPIN(gatedata.outputpin)
+  return newgate
+end
+local loadPERIPHERAL
+loadPERIPHERAL = function(peripheraldata)
+  local newperipheral = PERIPHERAL(peripheraldata.pos.x, peripheraldata.pos.y, peripheraldata.inputpincount)
+  if peripheraldata.name == "INPUT" then
+    newperipheral = INPUT(peripheraldata.pos.x, peripheraldata.pos.y, peripheraldata.inputpincount)
+  elseif peripheraldata.name == "CLOCK" then
+    peripheraldata.tickspeed = peripheraldata.tickspeed
+    peripheraldata.lastMicroSec = love.timer.getTime()
+    newperipheral = CLOCK(peripheraldata.pos.x, peripheraldata.pos.y, peripheraldata.inputpincount)
+  elseif peripheraldata.name == "BUFFER" then
+    peripheraldata.ticks = peripheraldata.ticks
+    peripheraldata.tickcounter = 0
+    peripheraldata.isBuffering = false
+    newperipheral = BUFFER(peripheraldata.pos.x, peripheraldata.pos.y, peripheraldata.inputpincount)
+  elseif peripheraldata.name == "OUTPUT" then
+    newperipheral = OUTPUT(peripheraldata.pos.x, peripheraldata.pos.y, peripheraldata.inputpincount)
+  else
+    print("ERROR: Unknown peripheral type: " .. peripheraldata.name)
+  end
+  newperipheral.id = peripheraldata.id
+  newperipheral.state = peripheraldata.state
+  newperipheral.inputpin = loadINPUTPIN(peripheraldata.inputpins)
+  newperipheral.outputpin = loadOUTPUTPIN(peripheraldata.outputpin)
+  return newperipheral
 end
 graphicSettings = {
   betterGraphics = true,
@@ -89,15 +161,20 @@ end
 local PIN
 do
   local _class_0
-  local _base_0 = { }
+  local _base_0 = {
+    ID = 0,
+    newID = function(self)
+      self.ID = self.ID + 1
+    end
+  }
   _base_0.__index = _base_0
   _class_0 = setmetatable({
     __init = function(self, parentID)
-      self.id = self.__class:newID()
-      self.parentID = parentID
-      self.state = false
-      self.pos = vec2(0, 0)
-      self.isConnected = false
+      local id = self:newID()
+      parentID = parentID
+      local state = false
+      local pos = vec2(0, 0)
+      local isConnected = false
     end,
     __base = _base_0,
     __name = "PIN"
@@ -110,12 +187,6 @@ do
     end
   })
   _base_0.__class = _class_0
-  local self = _class_0
-  self.ID = 0
-  self.newID = function(self)
-    PIN.ID = PIN.ID + 1
-    return PIN.ID
-  end
   PIN = _class_0
 end
 local INPUTPIN
@@ -201,7 +272,6 @@ do
   _base_0.__index = _base_0
   _class_0 = setmetatable({
     __init = function(self, x, y)
-      log.trace('new BOARDOBJECT')
       self.pos = vec2(x, y)
     end,
     __base = _base_0,
@@ -226,8 +296,8 @@ do
     drawMe = function(self) end,
     draw = function(self)
       love.graphics.setColor(graphicSettings.gateDropshadowColor)
-      local height = self:getHeight(self.inputpincount)
-      love.graphics.rectangle("fill", self.pos.x + graphicSettings.gateDropshadowOffset, self.pos.y + graphicSettings.gateDropshadowOffset, self:getWidth(), height, graphicSettings.gateDropshadowRounding)
+      local height = self.__class:getHeight(self.inputpincount)
+      love.graphics.rectangle("fill", self.pos.x + graphicSettings.gateDropshadowOffset, self.pos.y + graphicSettings.gateDropshadowOffset, self.__class:getWidth(), height, graphicSettings.gateDropshadowRounding)
       if graphicSettings.gateUseStateColors then
         if self.state then
           love.graphics.setColor(graphicSettings.gateStateColors.ON)
@@ -237,10 +307,10 @@ do
       else
         love.graphics.setColor(graphicSettings.gateColor)
       end
-      love.graphics.rectangle("fill", self.pos.x, self.pos.y, self:getWidth(), height, graphicSettings.betterGraphics and graphicSettings.gateBorderRounding or nil)
+      love.graphics.rectangle("fill", self.pos.x, self.pos.y, self.__class:getWidth(), height, graphicSettings.betterGraphics and graphicSettings.gateBorderRounding or nil)
       love.graphics.setColor(graphicSettings.gateUseAltBorderColor and graphicSettings.gateBorderColorAlt or graphicSettings.gateBorderColor)
       love.graphics.setLineWidth(graphicSettings.gateBorderWidth)
-      love.graphics.rectangle("line", self.pos.x, self.pos.y, self:getWidth(), height, graphicSettings.betterGraphics and graphicSettings.gateBorderRounding or nil)
+      love.graphics.rectangle("line", self.pos.x, self.pos.y, self.__class:getWidth(), height, graphicSettings.betterGraphics and graphicSettings.gateBorderRounding or nil)
       for i = 1, self.inputpincount do
         local pin = self.inputpins[i]
         if pin then
@@ -262,11 +332,11 @@ do
       else
         love.graphics.setColor(graphicSettings.gatePinColor.OFF)
       end
-      love.graphics.circle("fill", self.pos.x + self:getWidth(), self.pos.y + (height / 2), graphicSettings.gatePinSize)
+      love.graphics.circle("fill", self.pos.x + self.__class:getWidth(), self.pos.y + (height / 2), graphicSettings.gatePinSize)
       love.graphics.setLineWidth(1)
       love.graphics.setColor(1, 1, 1)
-      love.graphics.circle("line", self.pos.x + self:getWidth(), self.pos.y + (height / 2), graphicSettings.gatePinSize)
-      self.outputpin.pos = vec2(self.pos.x + self:getWidth(), self.pos.y + (height / 2))
+      love.graphics.circle("line", self.pos.x + self.__class:getWidth(), self.pos.y + (height / 2), graphicSettings.gatePinSize)
+      self.outputpin.pos = vec2(self.pos.x + self.__class:getWidth(), self.pos.y + (height / 2))
       return self:drawMe()
     end,
     resetPins = function(self)
@@ -285,20 +355,20 @@ do
       end
     end,
     isInside = function(self, x, y)
-      local width, height = self:getWidth(), self:getHeight(self.inputpincount)
+      local width, height = self.__class:getWidth(), self.__class:getHeight(self.inputpincount)
       return x >= self.pos.x and x <= self.pos.x + width and y >= self.pos.y and y <= self.pos.y + height
     end,
     getInputPinAt = function(self, x, y)
-      local piny = self.pos.y + self.__class.size.space * 2
+      local piny = self.pos.y + self.size.space * 2
       for i = 1, self.inputpincount do
         if lume.distance(x, y, self.pos.x, piny, false) < 10 then
           return self.inputpins[i]
         end
-        piny = piny + (self.__class.size.space * 3)
+        piny = piny + (self.size.space * 3)
       end
     end,
     getOutputPinAt = function(self, x, y)
-      if lume.distance(x, y, self.pos.x + self:getWidth(), self.pos.y + self:getHeight(self.inputpincount) / 2, false) < 10 then
+      if lume.distance(x, y, self.pos.x + self.__class:getWidth(), self.pos.y + self.__class:getHeight(self.inputpincount) / 2, false) < 10 then
         return self.outputpin
       end
     end,
@@ -331,8 +401,8 @@ do
         inputpincount = 2
       end
       _class_0.__parent.__init(self, x, y)
-      log.trace('new GATE')
-      self.id = self.__class:newID()
+      self.__class.ID = self.__class.ID + 1
+      self.id = self.__class.ID
       self.state = false
       self.inputpincount = inputpincount
       self.inputpins = { }
@@ -340,12 +410,6 @@ do
         table.insert(self.inputpins, INPUTPIN(self.id))
       end
       self.outputpin = OUTPUTPIN(self.id)
-      self.getWidth = function(self)
-        return self.__class.size.width * self.__class.size.scale
-      end
-      self.getHeight = function(self)
-        return self.__class.size.space * (4 + (3 * (self.inputpincount - 1))) * (self.__class.size.scale / 7)
-      end
     end,
     __base = _base_0,
     __name = "GATE",
@@ -371,10 +435,6 @@ do
   _base_0.__class = _class_0
   local self = _class_0
   self.ID = 1000
-  self.newID = function(self)
-    GATE.ID = GATE.ID + 1
-    return GATE.ID
-  end
   self.size = {
     width = 9,
     height = 14,
@@ -385,15 +445,382 @@ do
     return self.__class.size.width * self.__class.size.scale
   end
   self.getHeight = function(self, inputpincount)
-    if inputpincount == nil then
-      inputpincount = 2
-    end
     return self.__class.size.space * (4 + (3 * (inputpincount - 1))) * (self.__class.size.scale / 7)
   end
   if _parent_0.__inherited then
     _parent_0.__inherited(_parent_0, _class_0)
   end
   GATE = _class_0
+end
+local AND
+do
+  local _class_0
+  local _parent_0 = GATE
+  local _base_0 = {
+    drawMe = function(self)
+      love.graphics.setColor(1, 1, 1)
+      return printCentered("AND", self.pos.x + (self.__class:getWidth() / 2), self.pos.y + (self.__class:getHeight(self.inputpincount) / 2))
+    end,
+    update = function(self)
+      local newstate = true
+      for i = 1, self.inputpincount do
+        if not self.inputpins[i].state then
+          newstate = false
+        end
+      end
+      self.state = newstate
+      self.outputpin.state = self.state
+    end
+  }
+  _base_0.__index = _base_0
+  setmetatable(_base_0, _parent_0.__base)
+  _class_0 = setmetatable({
+    __init = function(self, x, y, inputpincount)
+      return _class_0.__parent.__init(self, x, y, inputpincount)
+    end,
+    __base = _base_0,
+    __name = "AND",
+    __parent = _parent_0
+  }, {
+    __index = function(cls, name)
+      local val = rawget(_base_0, name)
+      if val == nil then
+        local parent = rawget(cls, "__parent")
+        if parent then
+          return parent[name]
+        end
+      else
+        return val
+      end
+    end,
+    __call = function(cls, ...)
+      local _self_0 = setmetatable({}, _base_0)
+      cls.__init(_self_0, ...)
+      return _self_0
+    end
+  })
+  _base_0.__class = _class_0
+  if _parent_0.__inherited then
+    _parent_0.__inherited(_parent_0, _class_0)
+  end
+  AND = _class_0
+end
+local OR
+do
+  local _class_0
+  local _parent_0 = GATE
+  local _base_0 = {
+    drawMe = function(self)
+      love.graphics.setColor(1, 1, 1)
+      return printCentered("OR", self.pos.x + (self.__class:getWidth() / 2), self.pos.y + (self.__class:getHeight(self.inputpincount) / 2))
+    end,
+    update = function(self)
+      local newstate = false
+      for i = 1, self.inputpincount do
+        if self.inputpins[i].state then
+          newstate = true
+        end
+      end
+      self.state = newstate
+      self.outputpin.state = self.state
+    end
+  }
+  _base_0.__index = _base_0
+  setmetatable(_base_0, _parent_0.__base)
+  _class_0 = setmetatable({
+    __init = function(self, x, y, inputpincount)
+      return _class_0.__parent.__init(self, x, y, inputpincount)
+    end,
+    __base = _base_0,
+    __name = "OR",
+    __parent = _parent_0
+  }, {
+    __index = function(cls, name)
+      local val = rawget(_base_0, name)
+      if val == nil then
+        local parent = rawget(cls, "__parent")
+        if parent then
+          return parent[name]
+        end
+      else
+        return val
+      end
+    end,
+    __call = function(cls, ...)
+      local _self_0 = setmetatable({}, _base_0)
+      cls.__init(_self_0, ...)
+      return _self_0
+    end
+  })
+  _base_0.__class = _class_0
+  if _parent_0.__inherited then
+    _parent_0.__inherited(_parent_0, _class_0)
+  end
+  OR = _class_0
+end
+local NAND
+do
+  local _class_0
+  local _parent_0 = GATE
+  local _base_0 = {
+    drawMe = function(self)
+      love.graphics.setColor(1, 1, 1)
+      return printCentered("NAND", self.pos.x + (self.__class:getWidth() / 2), self.pos.y + (self.__class:getHeight(self.inputpincount) / 2))
+    end,
+    update = function(self)
+      local newstate = true
+      for i = 1, self.inputpincount do
+        if not self.inputpins[i].state then
+          newstate = false
+        end
+      end
+      self.state = not newstate
+      self.outputpin.state = self.state
+    end
+  }
+  _base_0.__index = _base_0
+  setmetatable(_base_0, _parent_0.__base)
+  _class_0 = setmetatable({
+    __init = function(self, x, y, inputpincount)
+      return _class_0.__parent.__init(self, x, y, inputpincount)
+    end,
+    __base = _base_0,
+    __name = "NAND",
+    __parent = _parent_0
+  }, {
+    __index = function(cls, name)
+      local val = rawget(_base_0, name)
+      if val == nil then
+        local parent = rawget(cls, "__parent")
+        if parent then
+          return parent[name]
+        end
+      else
+        return val
+      end
+    end,
+    __call = function(cls, ...)
+      local _self_0 = setmetatable({}, _base_0)
+      cls.__init(_self_0, ...)
+      return _self_0
+    end
+  })
+  _base_0.__class = _class_0
+  if _parent_0.__inherited then
+    _parent_0.__inherited(_parent_0, _class_0)
+  end
+  NAND = _class_0
+end
+local NOR
+do
+  local _class_0
+  local _parent_0 = GATE
+  local _base_0 = {
+    drawMe = function(self)
+      love.graphics.setColor(1, 1, 1)
+      return printCentered("NOR", self.pos.x + (self.__class:getWidth() / 2), self.pos.y + (self.__class:getHeight(self.inputpincount) / 2))
+    end,
+    update = function(self)
+      local newstate = false
+      for i = 1, self.inputpincount do
+        if self.inputpins[i].state then
+          newstate = true
+        end
+      end
+      self.state = not newstate
+      self.outputpin.state = self.state
+    end
+  }
+  _base_0.__index = _base_0
+  setmetatable(_base_0, _parent_0.__base)
+  _class_0 = setmetatable({
+    __init = function(self, x, y, inputpincount)
+      return _class_0.__parent.__init(self, x, y, inputpincount)
+    end,
+    __base = _base_0,
+    __name = "NOR",
+    __parent = _parent_0
+  }, {
+    __index = function(cls, name)
+      local val = rawget(_base_0, name)
+      if val == nil then
+        local parent = rawget(cls, "__parent")
+        if parent then
+          return parent[name]
+        end
+      else
+        return val
+      end
+    end,
+    __call = function(cls, ...)
+      local _self_0 = setmetatable({}, _base_0)
+      cls.__init(_self_0, ...)
+      return _self_0
+    end
+  })
+  _base_0.__class = _class_0
+  if _parent_0.__inherited then
+    _parent_0.__inherited(_parent_0, _class_0)
+  end
+  NOR = _class_0
+end
+local XOR
+do
+  local _class_0
+  local _parent_0 = GATE
+  local _base_0 = {
+    drawMe = function(self)
+      love.graphics.setColor(1, 1, 1)
+      return printCentered("XOR", self.pos.x + (self.__class:getWidth() / 2), self.pos.y + (self.__class:getHeight(self.inputpincount) / 2))
+    end,
+    update = function(self)
+      local newstate = false
+      for i = 1, self.inputpincount do
+        if self.inputpins[i].state then
+          newstate = not newstate
+        end
+      end
+      self.state = newstate
+      self.outputpin.state = self.state
+    end
+  }
+  _base_0.__index = _base_0
+  setmetatable(_base_0, _parent_0.__base)
+  _class_0 = setmetatable({
+    __init = function(self, x, y, inputpincount)
+      return _class_0.__parent.__init(self, x, y, inputpincount)
+    end,
+    __base = _base_0,
+    __name = "XOR",
+    __parent = _parent_0
+  }, {
+    __index = function(cls, name)
+      local val = rawget(_base_0, name)
+      if val == nil then
+        local parent = rawget(cls, "__parent")
+        if parent then
+          return parent[name]
+        end
+      else
+        return val
+      end
+    end,
+    __call = function(cls, ...)
+      local _self_0 = setmetatable({}, _base_0)
+      cls.__init(_self_0, ...)
+      return _self_0
+    end
+  })
+  _base_0.__class = _class_0
+  if _parent_0.__inherited then
+    _parent_0.__inherited(_parent_0, _class_0)
+  end
+  XOR = _class_0
+end
+local XNOR
+do
+  local _class_0
+  local _parent_0 = GATE
+  local _base_0 = {
+    drawMe = function(self)
+      love.graphics.setColor(1, 1, 1)
+      return printCentered("XNOR", self.pos.x + (self.__class:getWidth() / 2), self.pos.y + (self.__class:getHeight(self.inputpincount) / 2))
+    end,
+    update = function(self)
+      local newstate = true
+      for i = 1, self.inputpincount do
+        if self.inputpins[i].state then
+          newstate = not newstate
+        end
+      end
+      self.state = newstate
+      self.outputpin.state = self.state
+    end
+  }
+  _base_0.__index = _base_0
+  setmetatable(_base_0, _parent_0.__base)
+  _class_0 = setmetatable({
+    __init = function(self, x, y, inputpincount)
+      return _class_0.__parent.__init(self, x, y, inputpincount)
+    end,
+    __base = _base_0,
+    __name = "XNOR",
+    __parent = _parent_0
+  }, {
+    __index = function(cls, name)
+      local val = rawget(_base_0, name)
+      if val == nil then
+        local parent = rawget(cls, "__parent")
+        if parent then
+          return parent[name]
+        end
+      else
+        return val
+      end
+    end,
+    __call = function(cls, ...)
+      local _self_0 = setmetatable({}, _base_0)
+      cls.__init(_self_0, ...)
+      return _self_0
+    end
+  })
+  _base_0.__class = _class_0
+  if _parent_0.__inherited then
+    _parent_0.__inherited(_parent_0, _class_0)
+  end
+  XNOR = _class_0
+end
+local NOT
+do
+  local _class_0
+  local _parent_0 = GATE
+  local _base_0 = {
+    drawMe = function(self)
+      love.graphics.setColor(1, 1, 1)
+      return printCentered("NOT", self.pos.x + (self.__class:getWidth() / 2), self.pos.y + (self.__class:getHeight(self.inputpincount) / 2))
+    end,
+    update = function(self)
+      self.state = not self.inputpins[1].state
+      self.outputpin.state = self.state
+    end,
+    removePin = function(self) end,
+    addPin = function(self) end
+  }
+  _base_0.__index = _base_0
+  setmetatable(_base_0, _parent_0.__base)
+  _class_0 = setmetatable({
+    __init = function(self, x, y, inputpincount)
+      if inputpincount == nil then
+        inputpincount = 1
+      end
+      return _class_0.__parent.__init(self, x, y, inputpincount)
+    end,
+    __base = _base_0,
+    __name = "NOT",
+    __parent = _parent_0
+  }, {
+    __index = function(cls, name)
+      local val = rawget(_base_0, name)
+      if val == nil then
+        local parent = rawget(cls, "__parent")
+        if parent then
+          return parent[name]
+        end
+      else
+        return val
+      end
+    end,
+    __call = function(cls, ...)
+      local _self_0 = setmetatable({}, _base_0)
+      cls.__init(_self_0, ...)
+      return _self_0
+    end
+  })
+  _base_0.__class = _class_0
+  if _parent_0.__inherited then
+    _parent_0.__inherited(_parent_0, _class_0)
+  end
+  NOT = _class_0
 end
 local PERIPHERAL
 do
@@ -468,12 +895,12 @@ do
       end
     end,
     getInputPinByID = function(self, id)
-      if self.hasinputpin and self.inputpin.id == id then
+      if self.inputpin.id == id then
         return self.inputpin
       end
     end,
     getOutputPinByID = function(self, id)
-      if self.hasoutputpin and self.outputpin.id == id then
+      if self.outputpin.id == id then
         return self.outputpin
       end
     end,
@@ -495,8 +922,8 @@ do
         outputpincount = 0
       end
       _class_0.__parent.__init(self, x, y)
-      log.trace('new PERIPHERAL')
-      self.id = self.__class:newID()
+      self.__class.ID = self.__class.ID + 1
+      self.id = self.__class.ID
       self.hasinputpin = inputpincount > 0
       self.hasoutputpin = outputpincount > 0
       if self.hasinputpin then
@@ -506,12 +933,6 @@ do
         self.outputpin = OUTPUTPIN(self.id)
       end
       self.state = false
-      self.getWidth = function(self)
-        return self.__class.size.width * self.__class.size.scale
-      end
-      self.getHeight = function(self)
-        return self.__class.size.space * 4 * (self.__class.size.scale / 7)
-      end
     end,
     __base = _base_0,
     __name = "PERIPHERAL",
@@ -537,10 +958,6 @@ do
   _base_0.__class = _class_0
   local self = _class_0
   self.ID = 2000
-  self.newID = function(self)
-    PERIPHERAL.ID = PERIPHERAL.ID + 1
-    return PERIPHERAL.ID
-  end
   self.size = {
     width = 12,
     height = 14,
@@ -557,390 +974,6 @@ do
     _parent_0.__inherited(_parent_0, _class_0)
   end
   PERIPHERAL = _class_0
-end
-local AND
-do
-  local _class_0
-  local _parent_0 = GATE
-  local _base_0 = {
-    drawMe = function(self)
-      love.graphics.setColor(1, 1, 1)
-      return printCentered("AND", self.pos.x + (self.__class:getWidth() / 2), self.pos.y + (self.__class:getHeight(self.inputpincount) / 2))
-    end,
-    update = function(self)
-      local newstate = true
-      for i = 1, self.inputpincount do
-        if not self.inputpins[i].state then
-          newstate = false
-        end
-      end
-      self.state = newstate
-      self.outputpin.state = self.state
-    end
-  }
-  _base_0.__index = _base_0
-  setmetatable(_base_0, _parent_0.__base)
-  _class_0 = setmetatable({
-    __init = function(self, x, y, inputpincount)
-      _class_0.__parent.__init(self, x, y, inputpincount)
-      self.name = "AND"
-      return log.trace('new AND')
-    end,
-    __base = _base_0,
-    __name = "AND",
-    __parent = _parent_0
-  }, {
-    __index = function(cls, name)
-      local val = rawget(_base_0, name)
-      if val == nil then
-        local parent = rawget(cls, "__parent")
-        if parent then
-          return parent[name]
-        end
-      else
-        return val
-      end
-    end,
-    __call = function(cls, ...)
-      local _self_0 = setmetatable({}, _base_0)
-      cls.__init(_self_0, ...)
-      return _self_0
-    end
-  })
-  _base_0.__class = _class_0
-  if _parent_0.__inherited then
-    _parent_0.__inherited(_parent_0, _class_0)
-  end
-  AND = _class_0
-end
-local OR
-do
-  local _class_0
-  local _parent_0 = GATE
-  local _base_0 = {
-    drawMe = function(self)
-      love.graphics.setColor(1, 1, 1)
-      return printCentered("OR", self.pos.x + (self.__class:getWidth() / 2), self.pos.y + (self.__class:getHeight(self.inputpincount) / 2))
-    end,
-    update = function(self)
-      local newstate = false
-      for i = 1, self.inputpincount do
-        if self.inputpins[i].state then
-          newstate = true
-        end
-      end
-      self.state = newstate
-      self.outputpin.state = self.state
-    end
-  }
-  _base_0.__index = _base_0
-  setmetatable(_base_0, _parent_0.__base)
-  _class_0 = setmetatable({
-    __init = function(self, x, y, inputpincount)
-      _class_0.__parent.__init(self, x, y, inputpincount)
-      self.name = "OR"
-      return log.trace('new OR')
-    end,
-    __base = _base_0,
-    __name = "OR",
-    __parent = _parent_0
-  }, {
-    __index = function(cls, name)
-      local val = rawget(_base_0, name)
-      if val == nil then
-        local parent = rawget(cls, "__parent")
-        if parent then
-          return parent[name]
-        end
-      else
-        return val
-      end
-    end,
-    __call = function(cls, ...)
-      local _self_0 = setmetatable({}, _base_0)
-      cls.__init(_self_0, ...)
-      return _self_0
-    end
-  })
-  _base_0.__class = _class_0
-  if _parent_0.__inherited then
-    _parent_0.__inherited(_parent_0, _class_0)
-  end
-  OR = _class_0
-end
-local NAND
-do
-  local _class_0
-  local _parent_0 = GATE
-  local _base_0 = {
-    drawMe = function(self)
-      love.graphics.setColor(1, 1, 1)
-      return printCentered("NAND", self.pos.x + (self.__class:getWidth() / 2), self.pos.y + (self.__class:getHeight(self.inputpincount) / 2))
-    end,
-    update = function(self)
-      local newstate = true
-      for i = 1, self.inputpincount do
-        if not self.inputpins[i].state then
-          newstate = false
-        end
-      end
-      self.state = not newstate
-      self.outputpin.state = self.state
-    end
-  }
-  _base_0.__index = _base_0
-  setmetatable(_base_0, _parent_0.__base)
-  _class_0 = setmetatable({
-    __init = function(self, x, y, inputpincount)
-      _class_0.__parent.__init(self, x, y, inputpincount)
-      self.name = "NAND"
-      return log.trace('new NAND')
-    end,
-    __base = _base_0,
-    __name = "NAND",
-    __parent = _parent_0
-  }, {
-    __index = function(cls, name)
-      local val = rawget(_base_0, name)
-      if val == nil then
-        local parent = rawget(cls, "__parent")
-        if parent then
-          return parent[name]
-        end
-      else
-        return val
-      end
-    end,
-    __call = function(cls, ...)
-      local _self_0 = setmetatable({}, _base_0)
-      cls.__init(_self_0, ...)
-      return _self_0
-    end
-  })
-  _base_0.__class = _class_0
-  if _parent_0.__inherited then
-    _parent_0.__inherited(_parent_0, _class_0)
-  end
-  NAND = _class_0
-end
-local NOR
-do
-  local _class_0
-  local _parent_0 = GATE
-  local _base_0 = {
-    drawMe = function(self)
-      love.graphics.setColor(1, 1, 1)
-      return printCentered("NOR", self.pos.x + (self.__class:getWidth() / 2), self.pos.y + (self.__class:getHeight(self.inputpincount) / 2))
-    end,
-    update = function(self)
-      local newstate = false
-      for i = 1, self.inputpincount do
-        if self.inputpins[i].state then
-          newstate = true
-        end
-      end
-      self.state = not newstate
-      self.outputpin.state = self.state
-    end
-  }
-  _base_0.__index = _base_0
-  setmetatable(_base_0, _parent_0.__base)
-  _class_0 = setmetatable({
-    __init = function(self, x, y, inputpincount)
-      _class_0.__parent.__init(self, x, y, inputpincount)
-      self.name = "NOR"
-      return log.trace('new NOR')
-    end,
-    __base = _base_0,
-    __name = "NOR",
-    __parent = _parent_0
-  }, {
-    __index = function(cls, name)
-      local val = rawget(_base_0, name)
-      if val == nil then
-        local parent = rawget(cls, "__parent")
-        if parent then
-          return parent[name]
-        end
-      else
-        return val
-      end
-    end,
-    __call = function(cls, ...)
-      local _self_0 = setmetatable({}, _base_0)
-      cls.__init(_self_0, ...)
-      return _self_0
-    end
-  })
-  _base_0.__class = _class_0
-  if _parent_0.__inherited then
-    _parent_0.__inherited(_parent_0, _class_0)
-  end
-  NOR = _class_0
-end
-local XOR
-do
-  local _class_0
-  local _parent_0 = GATE
-  local _base_0 = {
-    drawMe = function(self)
-      love.graphics.setColor(1, 1, 1)
-      return printCentered("XOR", self.pos.x + (self.__class:getWidth() / 2), self.pos.y + (self.__class:getHeight(self.inputpincount) / 2))
-    end,
-    update = function(self)
-      local newstate = false
-      for i = 1, self.inputpincount do
-        if self.inputpins[i].state then
-          newstate = not newstate
-        end
-      end
-      self.state = newstate
-      self.outputpin.state = self.state
-    end
-  }
-  _base_0.__index = _base_0
-  setmetatable(_base_0, _parent_0.__base)
-  _class_0 = setmetatable({
-    __init = function(self, x, y, inputpincount)
-      _class_0.__parent.__init(self, x, y, inputpincount)
-      self.name = "XOR"
-      return log.trace('new XOR')
-    end,
-    __base = _base_0,
-    __name = "XOR",
-    __parent = _parent_0
-  }, {
-    __index = function(cls, name)
-      local val = rawget(_base_0, name)
-      if val == nil then
-        local parent = rawget(cls, "__parent")
-        if parent then
-          return parent[name]
-        end
-      else
-        return val
-      end
-    end,
-    __call = function(cls, ...)
-      local _self_0 = setmetatable({}, _base_0)
-      cls.__init(_self_0, ...)
-      return _self_0
-    end
-  })
-  _base_0.__class = _class_0
-  if _parent_0.__inherited then
-    _parent_0.__inherited(_parent_0, _class_0)
-  end
-  XOR = _class_0
-end
-local XNOR
-do
-  local _class_0
-  local _parent_0 = GATE
-  local _base_0 = {
-    drawMe = function(self)
-      love.graphics.setColor(1, 1, 1)
-      return printCentered("XNOR", self.pos.x + (self.__class:getWidth() / 2), self.pos.y + (self.__class:getHeight(self.inputpincount) / 2))
-    end,
-    update = function(self)
-      local newstate = true
-      for i = 1, self.inputpincount do
-        if self.inputpins[i].state then
-          newstate = not newstate
-        end
-      end
-      self.state = newstate
-      self.outputpin.state = self.state
-    end
-  }
-  _base_0.__index = _base_0
-  setmetatable(_base_0, _parent_0.__base)
-  _class_0 = setmetatable({
-    __init = function(self, x, y, inputpincount)
-      _class_0.__parent.__init(self, x, y, inputpincount)
-      self.name = "XNOR"
-      return log.trace('new XNOR')
-    end,
-    __base = _base_0,
-    __name = "XNOR",
-    __parent = _parent_0
-  }, {
-    __index = function(cls, name)
-      local val = rawget(_base_0, name)
-      if val == nil then
-        local parent = rawget(cls, "__parent")
-        if parent then
-          return parent[name]
-        end
-      else
-        return val
-      end
-    end,
-    __call = function(cls, ...)
-      local _self_0 = setmetatable({}, _base_0)
-      cls.__init(_self_0, ...)
-      return _self_0
-    end
-  })
-  _base_0.__class = _class_0
-  if _parent_0.__inherited then
-    _parent_0.__inherited(_parent_0, _class_0)
-  end
-  XNOR = _class_0
-end
-local NOT
-do
-  local _class_0
-  local _parent_0 = GATE
-  local _base_0 = {
-    drawMe = function(self)
-      love.graphics.setColor(1, 1, 1)
-      return printCentered("NOT", self.pos.x + (self.__class:getWidth() / 2), self.pos.y + (self.__class:getHeight(self.inputpincount) / 2))
-    end,
-    update = function(self)
-      self.state = not self.inputpins[1].state
-      self.outputpin.state = self.state
-    end,
-    removePin = function(self) end,
-    addPin = function(self) end
-  }
-  _base_0.__index = _base_0
-  setmetatable(_base_0, _parent_0.__base)
-  _class_0 = setmetatable({
-    __init = function(self, x, y, inputpincount)
-      if inputpincount == nil then
-        inputpincount = 1
-      end
-      _class_0.__parent.__init(self, x, y, inputpincount)
-      self.name = "NOT"
-      return log.trace('new NOT')
-    end,
-    __base = _base_0,
-    __name = "NOT",
-    __parent = _parent_0
-  }, {
-    __index = function(cls, name)
-      local val = rawget(_base_0, name)
-      if val == nil then
-        local parent = rawget(cls, "__parent")
-        if parent then
-          return parent[name]
-        end
-      else
-        return val
-      end
-    end,
-    __call = function(cls, ...)
-      local _self_0 = setmetatable({}, _base_0)
-      cls.__init(_self_0, ...)
-      return _self_0
-    end
-  })
-  _base_0.__class = _class_0
-  if _parent_0.__inherited then
-    _parent_0.__inherited(_parent_0, _class_0)
-  end
-  NOT = _class_0
 end
 local INPUT
 do
@@ -959,10 +992,14 @@ do
   _base_0.__index = _base_0
   setmetatable(_base_0, _parent_0.__base)
   _class_0 = setmetatable({
-    __init = function(self, x, y)
-      _class_0.__parent.__init(self, x, y, 0, 1)
-      self.name = "INPUT"
-      return log.trace('new INPUT')
+    __init = function(self, x, y, inputpincount, outputpincount)
+      if inputpincount == nil then
+        inputpincount = 0
+      end
+      if outputpincount == nil then
+        outputpincount = 1
+      end
+      return _class_0.__parent.__init(self, x, y, inputpincount, outputpincount)
     end,
     __base = _base_0,
     __name = "INPUT",
@@ -1001,16 +1038,20 @@ do
     end,
     drawMe = function(self)
       love.graphics.setColor(1, 1, 1)
-      return printCentered("AUSGANG", self.pos.x + (self.__class:getWidth() / 2), self.pos.y + (self.__class:getHeight() / 2))
+      return printCentered("OUT " .. tostring(self.id - 2000), self.pos.x + (self.__class:getWidth() / 2), self.pos.y + (self.__class:getHeight() / 2))
     end
   }
   _base_0.__index = _base_0
   setmetatable(_base_0, _parent_0.__base)
   _class_0 = setmetatable({
-    __init = function(self, x, y)
-      _class_0.__parent.__init(self, x, y, 1, 0)
-      self.name = "OUTPUT"
-      return log.trace('new OUTPUT')
+    __init = function(self, x, y, inputpincount, outputpincount)
+      if inputpincount == nil then
+        inputpincount = 1
+      end
+      if outputpincount == nil then
+        outputpincount = 0
+      end
+      return _class_0.__parent.__init(self, x, y, inputpincount, outputpincount)
     end,
     __base = _base_0,
     __name = "OUTPUT",
@@ -1065,17 +1106,21 @@ do
     end,
     drawMe = function(self)
       love.graphics.setColor(1, 1, 1)
-      return printCentered("PUFFER \n" .. tostring(self.ticks) .. " tks", self.pos.x + (self.__class:getWidth() / 2), self.pos.y + (self.__class:getHeight() / 4), 2)
+      return printCentered("BUFFER \n" .. tostring(self.ticks) .. " tks", self.pos.x + (self.__class:getWidth() / 2), self.pos.y + (self:getHeight() / 4), 2)
     end
   }
   _base_0.__index = _base_0
   setmetatable(_base_0, _parent_0.__base)
   _class_0 = setmetatable({
-    __init = function(self, x, y, ticks)
-      _class_0.__parent.__init(self, x, y, 1, 1)
-      self.name = "BUFFER"
-      log.trace('new BUFFER')
-      self.ticks = ticks or 5
+    __init = function(self, x, y, inputpincount, outputpincount)
+      if inputpincount == nil then
+        inputpincount = 1
+      end
+      if outputpincount == nil then
+        outputpincount = 1
+      end
+      _class_0.__parent.__init(self, x, y, inputpincount, outputpincount)
+      self.ticks = 5
       self.tickcount = 0
       self.isBuffering = false
     end,
@@ -1124,17 +1169,21 @@ do
     end,
     drawMe = function(self)
       love.graphics.setColor(1, 1, 1)
-      return printCentered("CLOCK\n" .. tostring(self.tickspeed) .. " Hz", self.pos.x + (self.__class:getWidth() / 2), self.pos.y + (self.__class:getHeight() / 4), 2)
+      return printCentered("CLOCK\n" .. tostring(self.tickspeed) .. " Hz", self.pos.x + (self.__class:getWidth() / 2), self.pos.y + (self:getHeight() / 4), 2)
     end
   }
   _base_0.__index = _base_0
   setmetatable(_base_0, _parent_0.__base)
   _class_0 = setmetatable({
-    __init = function(self, x, y, tickspeed)
-      _class_0.__parent.__init(self, x, y, 0, 1)
-      self.name = "CLOCK"
-      log.trace('new CLOCK')
-      self.tickspeed = tickspeed or 1
+    __init = function(self, x, y, inputpincount, outputpincount)
+      if inputpincount == nil then
+        inputpincount = 0
+      end
+      if outputpincount == nil then
+        outputpincount = 1
+      end
+      _class_0.__parent.__init(self, x, y, inputpincount, outputpincount)
+      self.tickspeed = 1
       self.ticks = 1 / self.tickspeed
       self.lastMicroSec = love.timer.getTime()
     end,
@@ -1165,85 +1214,6 @@ do
   end
   CLOCK = _class_0
 end
-local loadINPUTPIN
-loadINPUTPIN = function(pin)
-  local newpin = INPUTPIN(pin.parentID)
-  newpin.id = pin.id
-  newpin.state = pin.state
-  newpin.pos = vec2(pin.pos.x, pin.pos.y)
-  newpin.isConnected = pin.isConnected
-  return newpin
-end
-local loadOUTPUTPIN
-loadOUTPUTPIN = function(pin)
-  local newpin = OUTPUTPIN(pin.parentID)
-  newpin.id = pin.id
-  newpin.state = pin.state
-  newpin.pos = vec2(pin.pos.x, pin.pos.y)
-  newpin.isConnected = pin.isConnected
-  return newpin
-end
-local loadGATE
-loadGATE = function(gatedata)
-  local newgate = GATE(gatedata.pos.x, gatedata.pos.y, gatedata.inputpincount)
-  if gatedata.name == "AND" then
-    newgate = AND(gatedata.pos.x, gatedata.pos.y, gatedata.inputpincount)
-  elseif gatedata.name == "NAND" then
-    newgate = NAND(gatedata.pos.x, gatedata.pos.y, gatedata.inputpincount)
-  elseif gatedata.name == "OR" then
-    newgate = OR(gatedata.pos.x, gatedata.pos.y, gatedata.inputpincount)
-  elseif gatedata.name == "NOR" then
-    newgate = NOR(gatedata.pos.x, gatedata.pos.y, gatedata.inputpincount)
-  elseif gatedata.name == "XOR" then
-    newgate = XOR(gatedata.pos.x, gatedata.pos.y, gatedata.inputpincount)
-  elseif gatedata.name == "XNOR" then
-    newgate = XNOR(gatedata.pos.x, gatedata.pos.y, gatedata.inputpincount)
-  elseif gatedata.name == "NOT" then
-    newgate = NOT(gatedata.pos.x, gatedata.pos.y, gatedata.inputpincount)
-  else
-    log.warn("Unknown gate type: " .. tostring(gatedata.name))
-  end
-  newgate.id = gatedata.id
-  newgate.state = gatedata.state
-  newgate.inputpincount = gatedata.inputpincount
-  newgate.inputpins = { }
-  local _list_0 = gatedata.inputpins
-  for _index_0 = 1, #_list_0 do
-    local pin = _list_0[_index_0]
-    table.insert(newgate.inputpins, loadINPUTPIN(pin))
-  end
-  newgate.outputpin = loadOUTPUTPIN(gatedata.outputpin)
-  return newgate
-end
-local loadPERIPHERAL
-loadPERIPHERAL = function(peripheraldata)
-  local newperipheral = PERIPHERAL(peripheraldata.pos.x, peripheraldata.pos.y, peripheraldata.inputpincount)
-  if peripheraldata.name == "INPUT" then
-    newperipheral = INPUT(peripheraldata.pos.x, peripheraldata.pos.y, peripheraldata.inputpincount)
-  elseif peripheraldata.name == "CLOCK" then
-    newperipheral = CLOCK(peripheraldata.pos.x, peripheraldata.pos.y, peripheraldata.inputpincount)
-    newperipheral.tickspeed = peripheraldata.tickspeed
-    newperipheral.lastMicroSec = love.timer.getTime()
-  elseif peripheraldata.name == "BUFFER" then
-    newperipheral = BUFFER(peripheraldata.pos.x, peripheraldata.pos.y, peripheraldata.inputpincount)
-    newperipheral.ticks = peripheraldata.ticks
-    newperipheral.tickcounter = 0
-    newperipheral.isBuffering = false
-  elseif peripheraldata.name == "OUTPUT" then
-    newperipheral = OUTPUT(peripheraldata.pos.x, peripheraldata.pos.y, peripheraldata.inputpincount)
-  else
-    log.warn("Unknown peripheral type: " .. tostring(peripheraldata.name))
-  end
-  newperipheral.id = peripheraldata.id
-  newperipheral.state = peripheraldata.state
-  if peripheraldata.hasinputpin then
-    newperipheral.inputpin = loadINPUTPIN(peripheraldata.inputpin)
-  end
-  if peripheraldata.hasoutputpin then
-    newperipheral.outputpin = loadOUTPUTPIN(peripheraldata.outputpin)
-  end
-  return newperipheral
-end
 return {
   PIN = PIN,
   INPUTPIN = INPUTPIN,
@@ -1260,7 +1230,5 @@ return {
   INPUT = INPUT,
   OUTPUT = OUTPUT,
   BUFFER = BUFFER,
-  CLOCK = CLOCK,
-  loadGATE = loadGATE,
-  loadPERIPHERAL = loadPERIPHERAL
+  CLOCK = CLOCK
 }
