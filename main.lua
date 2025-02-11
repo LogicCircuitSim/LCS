@@ -1,5 +1,4 @@
 -- ==============================================================[ IMPORTS ]===================================================================--
-local version = require("settings").version
 
 require("lib.noahsutils")
 local lume = require("lib.lume")
