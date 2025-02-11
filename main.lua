@@ -75,7 +75,7 @@ local dontSelect = false
 local plotterID = 0
 local plotterData = {}
 
-local currentBoard = "none"
+local currentBoard = "web-demo"
 
 local telemetryInterval, telemetryIntervalLast = 500, love.timer.getTime()
 local telemetry, telemetryShow = {}, {}
@@ -163,6 +163,7 @@ function love.draw()
 		end
 	end
 
+	-- center circle marker
 	love.graphics.setColor(0.11, 0.11, 0.11)
 	love.graphics.circle("fill", camoffset.x, camoffset.y, 3 * scale)
 	love.graphics.setColor(0.18, 0.18, 0.18)
