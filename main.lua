@@ -640,217 +640,6 @@ end
 -- #                        LOVE KEY PRESSED                       #
 -- #################################################################
 function love.keypressed(key, scancode, isrepeat)
-	devKeyPressed(key)
-end
-
-function saveKeyPressed(key)
-	-- BOARD MENU
-	local mx, my = camera:getScreenPos(love.mouse.getPosition())
-
-	whenKeyPressed(key, "f1", "none", function()
-		settings.showHelp = not settings.showHelp
-	end)
-	whenKeyPressed(key, "f2", "none", function()
-		settings.showDebug = not settings.showDebug
-	end)
-	whenKeyPressed(key, "f3", "none", function()
-		settings.showFPS = not settings.showFPS
-	end)
-	whenKeyPressed(key, "f4", "none", function()
-		settings.showMessages = not settings.showMessages
-	end)
-	whenKeyPressed(key, "f5", "none", function()
-		settings.useSmoothDrag = not settings.useSmoothDrag
-		messages.add("Use Smooth Drag: " .. tostring(settings.useSmoothDrag))
-	end)
-
-	whenKeyPressed(key, "s", "ctrl", function()
-		saveBoard()
-	end)
-	whenKeyPressed(key, "l", "ctrl", function()
-		loadBoard()
-	end)
-	whenKeyPressed(key, "r", "ctrl", function()
-		resetBoard()
-	end)
-	whenKeyPressed(key, "d", "ctrl", function()
-		addDefaults()
-	end)
-	whenKeyPressed(key, "p", "ctrl", function()
-		settings.showPlotter = not settings.showPlotter
-	end)
-
-	whenKeyPressed(key, "c", "ctrl", function()
-		love.system.setClipboardText(json.encode({
-			gates = prepForSave(gates),
-			peripherals = prepForSave(peripherals),
-			connections = prepForSave(connections),
-			groups = prepForSave(groups),
-		}))
-		messages.add({ { 0.6, 0.89, 0.63 }, "Board Data copied to Clipboard!" })
-	end)
-	whenKeyPressed(key, "v", "ctrl", function()
-		local text = love.system.getClipboardText()
-		if text then
-			if text:match("gates") and text:match("peripherals") and text:match("connections") then
-				local data = json.decode(text)
-				if data then
-					resetBoard()
-					if data.gates then
-						for i, gatedata in ipairs(data.gates) do
-							addGate(classes.loadGATE(gatedata))
-						end
-					end
-					if data.peripherals then
-						for i, peripheraldata in ipairs(data.peripherals) do
-							addPeripheral(classes.loadPERIPHERAL(peripheraldata))
-						end
-					end
-					if data.connections then
-						for i, connection in ipairs(data.connections) do
-							addConnection({
-								outputpin = getPinByID(connection.outputpin.id),
-								inputpin = getPinByID(connection.inputpin.id),
-							})
-						end
-					end
-					if data.groups then
-						for i, group in ipairs(data.groups) do
-							lume.push(groups, group)
-						end
-					end
-					messages.add({ { 0.6, 0.89, 0.63 }, "Board Data loaded from Clipboard!" })
-				end
-			end
-		end
-	end)
-
-	whenKeyPressed(key, "q", "ctrl", nil, function()
-		love.event.quit()
-	end)
-
-	whenKeyPressed(key, "g", "none", function()
-		addGroup()
-		selection = { x1 = 0, y1 = 0, x2 = 0, y2 = 0, ids = {} }
-		messages.add({ { 0.71, 0.75, 0.86 }, "Group created!" })
-	end)
-
-	whenKeyPressed(key, "delete", "none", function()
-		if selectedPinID ~= 0 then --------------------- First Pin of new Connection selected
-			local pin = getPinByID(selectedPinID)
-			if pin then
-				pin.isConnected = false
-			end
-			selectedPinID = 0
-		else ------------------------------------------- no Pin selected
-			if #selection.ids > 0 then
-				for i, id in ipairs(selection.ids) do
-					local bob = getBobByID(id)
-					if bob then
-						removeBobByID(id)
-					end
-				end
-				selection = { x1 = 0, y1 = 0, x2 = 0, y2 = 0, ids = {} }
-			else
-				local pinID = getPinIDByPos(mx, my)
-				if pinID then
-					removeConnectionWithPinID(pinID)
-				else
-					local bobID = getBobIDByPos(mx, my)
-					if bobID then
-						removeBobByID(bobID)
-					end
-				end
-			end
-		end
-	end)
-
-	whenKeyPressed(key, "delete", "shift", function()
-		local groupID = getGroupIDByPos(mx, my)
-		if groupID then
-			removeGroupByID(groupID, love.keyboard.isDown("lalt"))
-		end
-	end)
-
-	whenKeyPressed(key, "x", "none", settings.deleteWithX, function()
-		if selectedPinID ~= 0 then --------------------- First Pin of new Connection selected
-			local pin = getPinByID(selectedPinID)
-			if pin then
-				pin.isConnected = false
-			end
-			selectedPinID = 0
-		else ------------------------------------------- no Pin selected
-			if #selection.ids > 0 then
-				for i, id in ipairs(selection.ids) do
-					local bob = getBobByID(id)
-					if bob then
-						removeBobByID(id)
-					end
-				end
-				selection = { x1 = 0, y1 = 0, x2 = 0, y2 = 0, ids = {} }
-			else
-				local pinID = getPinIDByPos(mx, my)
-				if pinID then
-					removeConnectionWithPinID(pinID)
-				else
-					local bobID = getBobIDByPos(mx, my)
-					if bobID then
-						removeBobByID(bobID)
-					end
-				end
-			end
-		end
-	end)
-	whenKeyPressed(key, "x", "shift", settings.deleteWithX, function()
-		local groupID = getGroupIDByPos(mx, my)
-		if groupID then
-			removeGroupByID(groupID, love.keyboard.isDown("lalt"))
-		end
-	end)
-
-	whenKeyPressed(key, "1", "none", function()
-		addPeripheral(classes.INPUT(mx - classes.PERIPHERAL:getWidth() / 2, my - classes.PERIPHERAL:getHeight() / 2))
-	end)
-	whenKeyPressed(key, "2", "none", function()
-		addPeripheral(classes.OUTPUT(mx - classes.PERIPHERAL:getWidth() / 2, my - classes.PERIPHERAL:getHeight() / 2))
-	end)
-	whenKeyPressed(key, "3", "none", function()
-		addGate(classes.NOT(mx - classes.GATE:getWidth() / 2, my - classes.GATE:getHeight(2) / 2))
-	end)
-	whenKeyPressed(key, "4", "none", function()
-		addGate(classes.AND(mx - classes.GATE:getWidth() / 2, my - classes.GATE:getHeight(2) / 2))
-	end)
-	whenKeyPressed(key, "5", "none", function()
-		addGate(classes.OR(mx - classes.GATE:getWidth() / 2, my - classes.GATE:getHeight(2) / 2))
-	end)
-	whenKeyPressed(key, "6", "none", function()
-		addGate(classes.XOR(mx - classes.GATE:getWidth() / 2, my - classes.GATE:getHeight(2) / 2))
-	end)
-	whenKeyPressed(key, "7", "none", function()
-		addGate(classes.NAND(mx - classes.GATE:getWidth() / 2, my - classes.GATE:getHeight(2) / 2))
-	end)
-	whenKeyPressed(key, "8", "none", function()
-		addGate(classes.NOR(mx - classes.GATE:getWidth() / 2, my - classes.GATE:getHeight(2) / 2))
-	end)
-	whenKeyPressed(key, "9", "none", function()
-		addGate(classes.XNOR(mx - classes.GATE:getWidth() / 2, my - classes.GATE:getHeight(2) / 2))
-	end)
-
-	whenKeyPressed(key, "c", "none", function()
-		addPeripheral(classes.CLOCK(mx - classes.PERIPHERAL:getWidth() / 2, my - classes.PERIPHERAL:getHeight() / 2))
-	end)
-	whenKeyPressed(key, "b", "none", function()
-		addPeripheral(classes.BUFFER(mx - classes.PERIPHERAL:getWidth() / 2, my - classes.PERIPHERAL:getHeight() / 2))
-	end)
-
-	whenKeyPressed(key, "space", "none", function()
-		camera:reset()
-		camera:center()
-	end)
-end
-
-function devKeyPressed(key)
-	-- BOARD MENU
 	local mx, my = camera:getScreenPos(love.mouse.getPosition())
 	if checkKeyPressed(key, "f1", "none", true) then
 		settings.showHelp = not settings.showHelp
@@ -881,7 +670,7 @@ function devKeyPressed(key)
 	end
 	if checkKeyPressed(key, "g", "ctrl", true) then
 		graphicSettings.betterGraphics = not graphicSettings.betterGraphics
-		messages.add("Use Better Graphics: " .. tostring(settings.useSmoothDrag))
+		messages.add("Use Better Graphics: " .. tostring(settings.betterGraphics))
 	end
 
 	if checkKeyPressed(key, "c", "ctrl", true) or checkKeyPressed(key, "c", "cmd", true) then
@@ -936,20 +725,30 @@ function devKeyPressed(key)
 	end
 
 	if checkKeyPressed(key, "delete", "none", true) then
-		if selectedPinID ~= 0 then -- First Pin of new Connection selected
+		if selectedPinID ~= 0 then --------------------- First Pin of new Connection selected
 			local pin = getPinByID(selectedPinID)
 			if pin then
 				pin.isConnected = false
 			end
 			selectedPinID = 0
-		else -- no Pin selected
-			local pinID = getPinIDByPos(mx, my)
-			if pinID then
-				removeConnectionWithPinID(pinID)
+		else ------------------------------------------- no Pin selected
+			if #selection.ids > 0 then
+				for i, id in ipairs(selection.ids) do
+					local bob = getBobByID(id)
+					if bob then
+						removeBobByID(id)
+					end
+				end
+				selection = { x1 = 0, y1 = 0, x2 = 0, y2 = 0, ids = {} }
 			else
-				local bobID = getBobIDByPos(mx, my)
-				if bobID then
-					removeBobByID(bobID)
+				local pinID = getPinIDByPos(mx, my)
+				if pinID then
+					removeConnectionWithPinID(pinID)
+				else
+					local bobID = getBobIDByPos(mx, my)
+					if bobID then
+						removeBobByID(bobID)
+					end
 				end
 			end
 		end
@@ -963,20 +762,30 @@ function devKeyPressed(key)
 	end
 
 	if settings.deleteWithX and checkKeyPressed(key, "x", "none", true) then
-		if selectedPinID ~= 0 then -- First Pin of new Connection selected
+		if selectedPinID ~= 0 then --------------------- First Pin of new Connection selected
 			local pin = getPinByID(selectedPinID)
 			if pin then
 				pin.isConnected = false
 			end
 			selectedPinID = 0
-		else -- no Pin selected
-			local pinID = getPinIDByPos(mx, my)
-			if pinID then
-				removeConnectionWithPinID(pinID)
+		else ------------------------------------------- no Pin selected
+			if #selection.ids > 0 then
+				for i, id in ipairs(selection.ids) do
+					local bob = getBobByID(id)
+					if bob then
+						removeBobByID(id)
+					end
+				end
+				selection = { x1 = 0, y1 = 0, x2 = 0, y2 = 0, ids = {} }
 			else
-				local bobID = getBobIDByPos(mx, my)
-				if bobID then
-					removeBobByID(bobID)
+				local pinID = getPinIDByPos(mx, my)
+				if pinID then
+					removeConnectionWithPinID(pinID)
+				else
+					local bobID = getBobIDByPos(mx, my)
+					if bobID then
+						removeBobByID(bobID)
+					end
 				end
 			end
 		end
@@ -996,41 +805,42 @@ function devKeyPressed(key)
 		addPeripheral(classes.OUTPUT(mx - classes.PERIPHERAL:getWidth() / 2, my - classes.PERIPHERAL:getHeight() / 2))
 	end
 	if checkKeyPressed(key, "3", "none", true) then
-		addPeripheral(classes.CLOCK(mx - classes.PERIPHERAL:getWidth() / 2, my - classes.PERIPHERAL:getHeight() / 2))
+		addGate(classes.NOT(mx - classes.GATE:getWidth() / 2, my - classes.GATE:getHeight(2) / 2))
 	end
 	if checkKeyPressed(key, "4", "none", true) then
-		addPeripheral(classes.BUFFER(mx - classes.PERIPHERAL:getWidth() / 2, my - classes.PERIPHERAL:getHeight() / 2))
-	end
-	if checkKeyPressed(key, "5", "none", true) then
 		addGate(classes.AND(mx - classes.GATE:getWidth() / 2, my - classes.GATE:getHeight(2) / 2))
 	end
-	if checkKeyPressed(key, "6", "none", true) then
+	if checkKeyPressed(key, "5", "none", true) then
 		addGate(classes.OR(mx - classes.GATE:getWidth() / 2, my - classes.GATE:getHeight(2) / 2))
 	end
+	if checkKeyPressed(key, "6", "none", true) then
+		addGate(classes.XOR(mx - classes.GATE:getWidth() / 2, my - classes.GATE:getHeight(2) / 2))
+	end
 	if checkKeyPressed(key, "7", "none", true) then
-		addGate(classes.NOT(mx - classes.GATE:getWidth() / 2, my - classes.GATE:getHeight(1) / 2))
+		addGate(classes.NAND(mx - classes.GATE:getWidth() / 2, my - classes.GATE:getHeight(2) / 2))
+	end
+	if checkKeyPressed(key, "8", "none", true) then
+		addGate(classes.NOR(mx - classes.GATE:getWidth() / 2, my - classes.GATE:getHeight(2) / 2))
+	end
+	if checkKeyPressed(key, "9", "none", true) then
+		addGate(classes.XNOR(mx - classes.GATE:getWidth() / 2, my - classes.GATE:getHeight(2) / 2))
 	end
 
-	if checkKeyPressed(key, "0", "none", true) then
-		camera:reset()
+	if checkKeyPressed(key, "c", "none", true) then
+		addPeripheral(classes.CLOCK(mx - classes.PERIPHERAL:getWidth() / 2, my - classes.PERIPHERAL:getHeight() / 2))
 	end
+	if checkKeyPressed(key, "b", "none", true) then
+		addPeripheral(classes.BUFFER(mx - classes.PERIPHERAL:getWidth() / 2, my - classes.PERIPHERAL:getHeight() / 2))
+	end
+
 	if checkKeyPressed(key, "space", "none", true) then
+		camera:reset()
 		camera:center()
 	end
 end
 
-function love.textinput(key) end
 --==============================================[ CUSTOM FUNCTIONS ]==============================================--
 
-function any(tbl)
-	tbl.mode = "any"
-	return tbl
-end
-
-function all(tbl)
-	tbl.mode = "all"
-	return tbl
-end
 
 function checkKeyPressed(key, keysToCompare, modifiers, additionalConditions)
 	-- Check if the key matches any of the keys to compare
