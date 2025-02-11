@@ -278,8 +278,8 @@ do
     end,
     removePin = function(self)
       if self.inputpincount > 2 then
+        table.remove(self.inputpins, #self.inputpins)
         self.inputpincount = self.inputpincount - 1
-        return table.remove(self.inputpins, self.inputpincount)
       end
     end,
     isInside = function(self, x, y)

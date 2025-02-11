@@ -590,35 +590,49 @@ end
 -- #                        LOVE WHEEL MOVED                       #
 -- #################################################################
 function love.wheelmoved(dx, dy)
-	x, y = camera:getScreenPos(love.mouse.getPosition())
+	-- on macos shift and scroll is horizontal (dx)
+	local delta = dy + dx
+	local x, y = camera:getScreenPos(love.mouse.getPosition())
 	if love.keyboard.isDown("lshift") then
-		for bob in myBobjects() do
-			if bob:isInside(x, y) then
-				-- print(serpent.block(bob))
-				if bob.name == "CLOCK" then
-					-- print("UHM YESSSS?!?!?!")
-					bob.tickspeed = bob.tickspeed + dy
-					if bob.tickspeed < 1 then
-						bob.tickspeed = 1
+		delta = delta * -1
+		-- Find the object under the cursor
+		local bobID = getBobIDByPos(x, y)
+		if bobID then
+			local bob = getBobByID(bobID) -- This will get the actual reference
+			if bob.name == "CLOCK" then
+				bob.tickspeed = bob.tickspeed + delta
+				if bob.tickspeed < 1 then
+					bob.tickspeed = 1
+				end
+			elseif bob.name == "AND" or bob.name == "NAND" or bob.name == "OR" then
+				if delta > 0 then
+					local inputPins = bob.inputpins
+					local maxId = -1
+					local maxIdIndex = 1
+					for i, pin in ipairs(inputPins) do
+						if pin.id > maxId then
+							maxId = pin.id
+							maxIdIndex = i
+						end
 					end
-				elseif bob.name == "AND" or bob.name == "NAND" or bob.name == "OR" then
-					if dy > 0 then
-						bob:addPin()
-					elseif dy < 0 then
+					local lastPin = inputPins[maxIdIndex]
+					if not lastPin.isConnected then
 						bob:removePin()
 					end
-				elseif bob.name == "BUFFER" then
-					bob.ticks = bob.ticks + dy
-					if bob.ticks < 1 then
-						bob.ticks = 1
-					end
+				elseif delta < 0 then
+					bob:addPin()
+				end
+			elseif bob.name == "BUFFER" then
+				bob.ticks = bob.ticks + delta
+				if bob.ticks < 1 then
+					bob.ticks = 1
 				end
 			end
 		end
 	elseif love.keyboard.isDown("lctrl") or love.keyboard.isDown("lgui") then
-		updatesPerTick = lume.clamp(updatesPerTick + dy, 1, 50)
+		updatesPerTick = lume.clamp(updatesPerTick + delta, 1, 50)
 	else
-		camera:zoom(dy)
+		camera:zoom(delta)
 	end
 end
 
