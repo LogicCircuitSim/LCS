@@ -5,7 +5,6 @@ require("lib.noahsutils")
 local lume = require("lib.lume")
 local messages = require("lib.messages")
 local classes = require("classes")
--- local json = require 'lib.json'
 local serpent = require("lib.serpent")
 local Camera = require("lib.camera")
 
@@ -150,15 +149,10 @@ end
 -- #                           LOVE DRAW                           #
 -- #################################################################
 function love.draw()
-	love.graphics.setScissor(0, 0, love.graphics.getWidth(), love.graphics.getHeight())
-	-- love.graphics.push('transform')
-	-- love.graphics.applyTransform(menuTransform)
 
 	-- ##############################[  BOARD  ]##############################
 	mx, my = camera:getScreenPos(love.mouse.getPosition())
 
-	love.graphics.stencil(boardStencil, "replace", 1)
-	love.graphics.setStencilTest("greater", 0)
 	-- grid points
 	love.graphics.setColor(0.15, 0.15, 0.15)
 	local scale = camera:getScale()
@@ -330,18 +324,14 @@ function love.draw()
 			string.format(
 				nt([[
 					Timings:
-					
 					Board Objekte Update: %s
 					Verbindungen  Update: %s
-					
 					Board Objekte Render: %s
 					Verbindungen  Render: %s
 					
 					Gesamt: %s
-
-
+                    -------------------------
 					Love2D Statistiken:
-
 					Drawcalls: %d
 					Canvas Switches: %d
 					Texture Memory: %d
@@ -404,16 +394,9 @@ function love.draw()
 			" | [F1] für Hilfe",
 		}, 10, 10)
 	end
-	love.graphics.setStencilTest()
 	if settings.showMessages then
 		messages.draw()
 	end
-
-	love.graphics.setScissor()
-end
-
-function boardStencil()
-	love.graphics.rectangle("fill", 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
 end
 
 function love.quit() end
@@ -947,26 +930,6 @@ function keyPressed(key, keys, mods, others)
 	-- mods
 	if mods ~= nil then
 		if type(mods) == "table" then
-			-- if collect(mods):contains('shift') then
-			-- 	isPressed = isPressed and love.keyboard.isDown('lshift') or love.keyboard.isDown('rshift')
-			-- else
-			-- 	isPressed = isPressed and not love.keyboard.isDown('lshift') and not love.keyboard.isDown('rshift')
-			-- end
-			-- if collect(mods):contains('ctrl') then
-			-- 	isPressed = isPressed and love.keyboard.isDown('lctrl') or love.keyboard.isDown('rctrl')
-			-- else
-			-- 	isPressed = isPressed and not love.keyboard.isDown('lshift') and not love.keyboard.isDown('rshift')
-			-- end
-			-- if collect(mods):contains('alt') then
-			-- 	isPressed = isPressed and love.keyboard.isDown('lalt') or love.keyboard.isDown('ralt')
-			-- else
-			-- 	isPressed = isPressed and not love.keyboard.isDown('lalt') and not love.keyboard.isDown('ralt')
-			-- end
-			-- if collect(mods):contains('gui') then
-			-- 	isPressed = isPressed and love.keyboard.isDown('lgui') or love.keyboard.isDown('rgui')
-			-- else
-			-- 	isPressed = isPressed and not love.keyboard.isDown('lgui') and not love.keyboard.isDown('rgui')
-			-- end
 		else
 			if mods == "shift" then
 				isPressed = isPressed and love.keyboard.isDown("lshift") or love.keyboard.isDown("rshift")
@@ -983,7 +946,7 @@ function keyPressed(key, keys, mods, others)
 			else
 				isPressed = isPressed and not love.keyboard.isDown("lalt") and not love.keyboard.isDown("ralt")
 			end
-			if mods == "gui" then
+			if mods == "cmd" then
 				isPressed = isPressed and love.keyboard.isDown("lgui") or love.keyboard.isDown("rgui")
 			else
 				isPressed = isPressed and not love.keyboard.isDown("lgui") and not love.keyboard.isDown("rgui")
@@ -1010,7 +973,6 @@ end
 function addGate(gate)
 	local addgatefunc = function()
 		lume.push(gates, gate)
-		-- love.thread.getChannel("addGate"):push(json.encode(gate))
 	end
 
 	addgatefunc()
@@ -1018,7 +980,6 @@ end
 function addPeripheral(peripheral)
 	local addperfunc = function()
 		lume.push(peripherals, peripheral)
-		-- love.thread.getChannel("addPeripheral"):push(json.encode(peripheral))
 	end
 
 	addperfunc()
@@ -1026,7 +987,6 @@ end
 function addConnection(con)
 	local addconfunc = function()
 		lume.push(connections, con)
-		-- love.thread.getChannel("addConnection"):push(json.encode(con))
 	end
 
 	addconfunc()
@@ -1060,7 +1020,6 @@ function resetBoard()
 	draggedGroupID = 0
 	plotterID = 0
 	plotterData = {}
-	-- love.thread.getChannel("reset"):push(true)
 	messages.add({ { 0.93, 0.7, 0.53 }, "Board Reset..." })
 end
 
@@ -1241,7 +1200,6 @@ function removeConnectionWithPinID(id)
 			end
 
 			table.remove(connections, index)
-			-- updateThread()
 		end
 	end
 end
@@ -1271,7 +1229,6 @@ function removePeripheralByID(id)
 				end
 			end
 			table.remove(peripherals, index)
-			-- updateThread()
 		end
 	end
 end
